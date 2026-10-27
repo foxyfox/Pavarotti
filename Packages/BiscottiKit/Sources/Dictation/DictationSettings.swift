@@ -94,4 +94,10 @@ public final class DictationSettingsStore {
         guard let data = try? JSONEncoder().encode(settings) else { return }
         defaults.set(data, forKey: Self.key)
     }
+
+    /// The Core Audio UID of the chosen microphone, `nil` for the system default. Meeting
+    /// recordings use the same microphone and read it from their audio thread.
+    public static func chosenMicrophoneUID(defaults: UserDefaults = .standard) -> String? {
+        DictationSettingsStore(defaults: defaults).load().microphone?.id
+    }
 }

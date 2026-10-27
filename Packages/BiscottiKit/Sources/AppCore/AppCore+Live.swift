@@ -1,6 +1,7 @@
 import AudioCapture
 import Calendar
 import DataStore
+import Dictation
 import Foundation
 import Intelligence
 import MeetingCatalog
@@ -48,7 +49,10 @@ public extension AppCore {
             permissions: permissions,
             storageRoot: recordingsRoot,
             makeRecorder: {
-                LiveRecorderAdapter(recorder: AudioRecorder.live())
+                // Pavarotti: meetings record from the microphone chosen for dictation.
+                LiveRecorderAdapter(recorder: AudioRecorder.live(preferredMicrophone: {
+                    DictationSettingsStore.chosenMicrophoneUID()
+                }))
             }
         )
 
