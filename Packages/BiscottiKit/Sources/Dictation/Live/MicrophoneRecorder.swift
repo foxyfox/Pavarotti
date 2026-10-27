@@ -18,6 +18,7 @@ public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable
         var sampleRate: Double = 0
         var onFirstAudio: (@Sendable () -> Void)?
         var isActive = false
+        var level: Float = 0
     }
 
     private let capture = Mutex(Capture())
@@ -65,6 +66,10 @@ public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable
 
     public func cancel() {
         finishCapture()
+    }
+
+    public var level: Float {
+        capture.withLock { $0.isActive ? $0.level : 0 }
     }
 
     // MARK: - Private
@@ -115,9 +120,11 @@ public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable
     private func append(_ buffer: AVAudioPCMBuffer) {
         let mono = Self.monoSamples(of: buffer)
         guard !mono.isEmpty else { return }
+        let level = DictationAudio.meterLevel(rms: DictationAudio.rms(mono))
         let callback = capture.withLock { state -> (@Sendable () -> Void)? in
             guard state.isActive else { return nil }
             state.samples.append(contentsOf: mono)
+            state.level = level
             let pending = state.onFirstAudio
             state.onFirstAudio = nil
             return pending

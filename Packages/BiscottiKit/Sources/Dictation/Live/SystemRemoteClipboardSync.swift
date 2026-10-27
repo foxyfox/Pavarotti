@@ -113,40 +113,7 @@ final class SystemRemoteClipboardSyncEnvironment: RemoteClipboardSyncEnvironment
     /// The screen with the remote app's frontmost window, so the helper window does not move
     /// the keyboard focus to another display.
     private static func screen(showing application: RemoteClipboardSyncApplication) -> NSScreen? {
-        guard let windowFrame = frontmostWindowFrame(of: application.processIdentifier),
-              let primaryScreen = NSScreen.screens.first
-        else {
-            return nil
-        }
-        // Window bounds start at the top left of the primary display, AppKit frames at its
-        // bottom left.
-        let frame = NSRect(
-            x: windowFrame.minX,
-            y: primaryScreen.frame.maxY - windowFrame.maxY,
-            width: windowFrame.width,
-            height: windowFrame.height
-        )
-        func overlap(_ screen: NSScreen) -> CGFloat {
-            let intersection = screen.frame.intersection(frame)
-            return intersection.isNull ? 0 : intersection.width * intersection.height
-        }
-        guard let screen = NSScreen.screens.max(by: { overlap($0) < overlap($1) }), overlap(screen) > 0 else {
-            return nil
-        }
-        return screen
-    }
-
-    /// The bounds of the app's frontmost normal window, from the window server.
-    private static func frontmostWindowFrame(of processIdentifier: pid_t) -> CGRect? {
-        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-        guard let windows = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return nil }
-        // Keys spelled out: the kCGWindow… constants are these strings.
-        let window = windows.first { info in
-            (info["kCGWindowOwnerPID"] as? Int).map(pid_t.init) == processIdentifier
-                && (info["kCGWindowLayer"] as? Int) == 0
-        }
-        guard let bounds = window?["kCGWindowBounds"] as? NSDictionary else { return nil }
-        return CGRect(dictionaryRepresentation: bounds as CFDictionary)
+        FrontmostWindowScreen.screen(showingWindowOf: application.processIdentifier)
     }
 }
 
