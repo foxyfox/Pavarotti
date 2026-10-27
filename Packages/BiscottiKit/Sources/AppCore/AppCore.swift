@@ -330,6 +330,10 @@ public final class AppCore {
     /// `pendingStartupEventKey` so a retry keeps the caller's title.
     private var pendingStartupTitle: String?
 
+    /// Pavarotti: meetings whose calendar event the user removed. They are never
+    /// linked again automatically when their recording stops.
+    var calendarUnlinkedMeetingIDs: Set<UUID> = []
+
     /// The auto-stop countdown task. Cancelled on keepRecording or manual stop.
     private var countdownTask: Task<Void, Never>?
 
@@ -570,9 +574,7 @@ public final class AppCore {
             cancelAutoStopCountdown(meetingID: meetingID)
         }
 
-        guard let meetingID = await recording.stop() else {
-            return nil
-        }
+        guard let meetingID = await recording.stop() else { return nil }
 
         // Clear detection tracking and startup state
         activeDetectedBundleID = nil
@@ -581,6 +583,7 @@ public final class AppCore {
         startupGeneration &+= 1
         recordingStartup = nil
 
+        await linkCalendarEventAfterRecording(meetingID)
         await reloadSummaries()
         runState = .idle
         select(meetingID)
@@ -1709,6 +1712,7 @@ extension AppCore {
                 try await persistSnapshot(input, for: meetingID)
             } else {
                 // Explicit unlink: clear the association.
+                calendarUnlinkedMeetingIDs.insert(meetingID)
                 try await store.clearSnapshot(for: meetingID)
                 try await store.setParticipants(
                     [], organizer: nil, for: meetingID

@@ -214,7 +214,8 @@ public struct MeetingDetailView: View {
                     },
                     onDismiss: {
                         viewModel.speakerSheetTranscriptID = nil
-                    }
+                    },
+                    voiceConsent: viewModel.voiceConsent
                 )
             }
         }

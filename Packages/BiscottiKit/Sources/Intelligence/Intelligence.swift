@@ -37,6 +37,10 @@ public final class Intelligence {
     /// one in flight, whatever its outcome, so the meeting's note can be written.
     @ObservationIgnored public var onRunFinished: (@MainActor (UUID) -> Void)?
 
+    /// Pavarotti: whose voices may name speakers in later meetings. `nil` (tests and
+    /// previews) uses every voice, as Biscotti does.
+    @ObservationIgnored public var voiceConsent: VoiceConsentStore?
+
     // MARK: - Init
 
     /// Creates an `Intelligence` service.
@@ -230,7 +234,7 @@ public final class Intelligence {
         let voiceprintBlock = doSpeakers
             ? await VoiceprintEvidence.block(
                 store: store, meetingID: meetingID,
-                transcript: transcript, detail: detail, human: human
+                transcript: transcript, detail: detail, human: human, consent: voiceConsent
             )
             : ""
 

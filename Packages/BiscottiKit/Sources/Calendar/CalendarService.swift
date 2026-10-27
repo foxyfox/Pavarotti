@@ -175,6 +175,34 @@ public final class CalendarService {
         return events
     }
 
+    /// Pavarotti: the calendar event a finished recording without one belongs to
+    /// (see ``RecordingEventMatcher``). Canceled events and events the user declined
+    /// never count. Caches the match so `snapshot(forKey:)` can resolve it.
+    public func eventMatchingRecording(_ recording: DateInterval) async -> CalendarEvent? {
+        let dtos = await fetchDTOs(in: RecordingEventMatcher.searchInterval(for: recording))
+        var events: [CalendarEvent] = []
+        var dtosByKey: [String: EKEventDTO] = [:]
+        for dto in dtos where Self.mayMatchRecording(dto) {
+            let conference = conferenceResult(for: dto)
+            let meetingLike = isMeetingLike(dto, conference: conference)
+            let (key, event) = mapDTOToEvent(dto, conference: conference, meetingLike: meetingLike)
+            events.append(event)
+            dtosByKey[key] = dto
+        }
+        guard let match = RecordingEventMatcher.bestMatch(recording: recording, candidates: events),
+              let dto = dtosByKey[match.id]
+        else { return nil }
+        candidateDTOs[match.id] = dto
+        return match
+    }
+
+    /// Not all-day, no birthday, not canceled and not declined by the user.
+    private static func mayMatchRecording(_ dto: EKEventDTO) -> Bool {
+        guard !dto.isAllDay, dto.birthdayContactIdentifier == nil, dto.status != "canceled" else { return false }
+        let user = ([dto.organizer].compactMap(\.self) + dto.attendees).first(where: \.isCurrentUser)
+        return user?.status != "declined"
+    }
+
     /// Pick the best calendar event for auto-association at recording start.
     public func bestMatch(at date: Date) -> CalendarEvent? {
         let imminentWindow: TimeInterval = 10 * 60 // 10 minutes

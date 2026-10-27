@@ -1833,3 +1833,12 @@ public extension MeetingDetailViewModel {
         }
     }
 }
+
+// MARK: - Pavarotti: voice consent
+
+extension MeetingDetailViewModel {
+    /// The consent notes for remembering voices; `nil` in tests and previews.
+    var voiceConsent: VoiceConsentStore? {
+        core.intelligence.voiceConsent
+    }
+}

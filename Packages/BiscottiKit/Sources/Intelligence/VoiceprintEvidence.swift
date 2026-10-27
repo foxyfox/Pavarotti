@@ -37,6 +37,7 @@ public enum VoiceprintEvidence {
         transcript: TranscriptData,
         detail: MeetingDetailData,
         human: [Int: PersonData],
+        consent: VoiceConsentStore? = nil,
         config: VoiceprintConfig = .default
     ) async throws -> VoiceprintEvidenceResult {
         let allSpeakers = Set(transcript.segments.compactMap(\.speakerID)).sorted()
@@ -45,7 +46,7 @@ public enum VoiceprintEvidence {
         let query = try await store.voiceprintQuery(transcriptID: transcript.id, kind: .raw)
 
         let (corpus, queryVectors) = try await loadCorpus(
-            store: store, query: query, meetingID: meetingID
+            store: store, query: query, meetingID: meetingID, consent: consent
         )
 
         let invitees = buildInvitees(detail: detail)
@@ -87,12 +88,13 @@ public enum VoiceprintEvidence {
         meetingID: UUID,
         transcript: TranscriptData,
         detail: MeetingDetailData,
-        human: [Int: PersonData]
+        human: [Int: PersonData],
+        consent: VoiceConsentStore? = nil
     ) async -> String {
         do {
             let result = try await compute(
                 store: store, meetingID: meetingID,
-                transcript: transcript, detail: detail, human: human
+                transcript: transcript, detail: detail, human: human, consent: consent
             )
             return result.block
         } catch {
@@ -105,7 +107,7 @@ public enum VoiceprintEvidence {
 
     private static func loadCorpus(
         store: DataStore, query: VoiceprintQueryData?,
-        meetingID: UUID
+        meetingID: UUID, consent: VoiceConsentStore?
     ) async throws -> (PreparedCorpus, [Int: [Float]]) {
         guard let space = query?.space else {
             let emptyData = VoiceprintCorpusData(
@@ -113,9 +115,15 @@ public enum VoiceprintEvidence {
             )
             return (PreparedCorpus(emptyData), [:])
         }
-        let corpusData = try await store.voiceprintCorpus(
+        let stored = try await store.voiceprintCorpus(
             kind: .raw, space: space, excludingMeetingID: meetingID
         )
+        // Pavarotti: only voices with consent (and the user's own) name speakers.
+        var allowed: Set<UUID>?
+        if let consent {
+            allowed = await VoiceConsentFilter.allowedPersonIDs(consent: consent, store: store)
+        }
+        let corpusData = allowed.map { VoiceConsentFilter.corpus(stored, allowing: $0) } ?? stored
         let corpus = await Task.detached(priority: .userInitiated) {
             PreparedCorpus(corpusData)
         }.value
