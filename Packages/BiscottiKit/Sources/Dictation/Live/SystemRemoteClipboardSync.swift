@@ -46,7 +46,20 @@ final class SystemRemoteClipboardSyncEnvironment: RemoteClipboardSyncEnvironment
         window.makeKey()
         // The cooperative `activate()` may decline to activate an app in the background; the
         // measured nudge used the forced variant.
-        NSApp.activate(ignoringOtherApps: true)
+        Self.activateIgnoringOtherApps()
+    }
+
+    /// `NSApp.activate(ignoringOtherApps: true)`, called through the runtime: it is
+    /// deprecated since macOS 14, and the build treats warnings as errors.
+    private static func activateIgnoringOtherApps() {
+        typealias Activate = @convention(c) (AnyObject, Selector, Bool) -> Void
+        let selector = NSSelectorFromString("activateIgnoringOtherApps:")
+        guard let method = class_getInstanceMethod(NSApplication.self, selector) else {
+            NSApp.activate()
+            return
+        }
+        let activate = unsafeBitCast(method_getImplementation(method), to: Activate.self)
+        activate(NSApp, selector, true)
     }
 
     func activate(_ application: RemoteClipboardSyncApplication) -> Bool {
