@@ -33,6 +33,10 @@ public final class Intelligence {
     /// Only one AI run at a time (mirrors TranscriptionService.inFlightMeetingID).
     private var inFlightMeetingID: UUID?
 
+    /// Pavarotti: called after every auto or manual run that was not skipped for another
+    /// one in flight, whatever its outcome, so the meeting's note can be written.
+    @ObservationIgnored public var onRunFinished: (@MainActor (UUID) -> Void)?
+
     // MARK: - Init
 
     /// Creates an `Intelligence` service.
@@ -54,6 +58,12 @@ public final class Intelligence {
         settingsProvider = settings
     }
 
+    /// Ends the run of `meetingID` and tells ``onRunFinished``.
+    private func finishRun(_ meetingID: UUID) {
+        inFlightMeetingID = nil
+        onRunFinished?(meetingID)
+    }
+
     // MARK: - Auto-run orchestration
 
     /// Post-transcription auto-run. Reads settings + model presence; runs
@@ -62,7 +72,7 @@ public final class Intelligence {
     public func runAutoEnhancements(meetingID: UUID) async {
         guard inFlightMeetingID == nil else { return }
         inFlightMeetingID = meetingID
-        defer { inFlightMeetingID = nil }
+        defer { finishRun(meetingID) }
 
         // Set preparing SYNCHRONOUSLY before any await, so the UI never
         // falls back to the "Generate Summary" button during the async gap.
@@ -138,9 +148,7 @@ public final class Intelligence {
     ) async {
         guard inFlightMeetingID == nil else { return }
         inFlightMeetingID = meetingID
-        defer {
-            inFlightMeetingID = nil
-        }
+        defer { finishRun(meetingID) }
 
         // Set preparing SYNCHRONOUSLY before any await.
         jobs[meetingID] = .preparing
