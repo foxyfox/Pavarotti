@@ -2,6 +2,7 @@ import AppKit
 import AppLinks
 import Calendar
 import DataStore
+import Dictation
 import Foundation
 import Intelligence
 import MCPServer
@@ -294,6 +295,10 @@ public final class AppCore {
     /// Local MCP server lifecycle (loopback HTTP, read-only meeting tools).
     /// Only starts when the user enables it in Settings.
     public let mcpServer: MCPServerController
+
+    /// Pavarotti: push-to-talk dictation. Set by the app at launch; `nil` in tests
+    /// and previews, where Settings then leaves the dictation section out.
+    public var dictation: DictationController?
 
     // MARK: - Private
 

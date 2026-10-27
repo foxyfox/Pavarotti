@@ -31,6 +31,8 @@ packages:
     path: ../Packages/AudioCapture
   LocalLLM:
     path: ../Packages/LocalLLM
+  CohereTranscribe:
+    path: ../Packages/CohereTranscribe
 
 targets:
   Biscotti:
@@ -64,6 +66,10 @@ targets:
         product: MenuBarUI
       - package: BiscottiKit
         product: Notifications
+      - package: BiscottiKit
+        product: Dictation
+      - package: BiscottiKit
+        product: DictationUI
       - package: Transcription
         product: Transcription
       - package: AudioCapture

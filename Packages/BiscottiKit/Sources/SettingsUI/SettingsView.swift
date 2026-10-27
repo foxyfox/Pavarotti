@@ -3,6 +3,7 @@ import AppKit
 import Calendar
 import DataStore
 import DesignSystem
+import DictationUI
 import Intelligence
 import ModelManagementUI
 import Permissions
@@ -70,6 +71,10 @@ public struct SettingsView: View {
                     .padding(.leading, Tokens.groupedFormLeadingInset)
 
                 Form {
+                    // Pavarotti: dictation comes first, it is the most used feature.
+                    if let dictation = viewModel.appCore.dictation {
+                        DictationSettingsSection(controller: dictation)
+                    }
                     generalSection
                     permissionsSection
                     notificationsSection

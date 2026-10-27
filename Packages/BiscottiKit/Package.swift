@@ -35,12 +35,15 @@ let package = Package(
         .library(name: "Vocabulary", targets: ["Vocabulary"]),
         .library(name: "MCPServer", targets: ["MCPServer"]),
         .library(name: "VoiceprintMatching", targets: ["VoiceprintMatching"]),
+        .library(name: "Dictation", targets: ["Dictation"]),
+        .library(name: "DictationUI", targets: ["DictationUI"]),
         .executable(name: "voiceprint-cli", targets: ["voiceprint-cli"])
     ],
     dependencies: [
         .package(name: "Transcription", path: "../Transcription"),
         .package(name: "AudioCapture", path: "../AudioCapture"),
         .package(name: "LocalLLM", path: "../LocalLLM"),
+        .package(name: "CohereTranscribe", path: "../CohereTranscribe"),
         .package(url: "https://github.com/nodes-app/swift-markdown-engine", from: "0.7.1"),
         .package(url: "https://github.com/apple/swift-nio", from: "2.65.0"),
         // MCP swift-sdk — version decided by the Phase 1 spike (architecture §2.1):
@@ -174,6 +177,7 @@ let package = Package(
             dependencies: [
                 "AppLinks",
                 "DataStore",
+                "Dictation",
                 "ImportExport",
                 "Intelligence",
                 "MCPServer",
@@ -430,6 +434,7 @@ let package = Package(
                 "Calendar",
                 "DataStore",
                 "DesignSystem",
+                "DictationUI",
                 "ImportExport",
                 "Intelligence",
                 "LocalLLM",
@@ -705,6 +710,31 @@ let package = Package(
                 "VoiceprintMatching",
                 .product(name: "Transcription", package: "Transcription"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
+            ],
+            swiftSettings: warningsAsErrors
+        ),
+        // Pavarotti: push-to-talk dictation with Cohere Transcribe (fork step 3).
+        .target(
+            name: "Dictation",
+            dependencies: [
+                .product(name: "CohereTranscribe", package: "CohereTranscribe")
+            ],
+            swiftSettings: warningsAsErrors
+        ),
+        .testTarget(
+            name: "DictationTests",
+            dependencies: [
+                "Dictation",
+                .product(name: "CohereTranscribe", package: "CohereTranscribe")
+            ],
+            swiftSettings: warningsAsErrors
+        ),
+        .target(
+            name: "DictationUI",
+            dependencies: [
+                "Dictation",
+                "DesignSystem",
+                .product(name: "CohereTranscribe", package: "CohereTranscribe")
             ],
             swiftSettings: warningsAsErrors
         ),
