@@ -34,6 +34,12 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
     private var configObserver: NSObjectProtocol?
     private var outputRateOverride: (deviceID: AudioObjectID, originalRate: Double)?
 
+    /// Pavarotti: the Core Audio UID of the microphone to record from, read at every
+    /// engine build; `nil` or a disconnected device means the system default.
+    private let preferredInputUID: @Sendable () -> String?
+    /// The input device of the current engine build. Owned by engineQueue.
+    private var inputDeviceID: AudioObjectID?
+
     /// First mic write error from the most recent session. Cleared at
     /// the start of each recording; set during `closeSession()` after the
     /// writer thread drains. Thread-safe via `Mutex`.
@@ -57,8 +63,9 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
     }
 
     /// Configures the file encoding used by each independent recording attempt.
-    init(encoder: EncoderSettings = .voice) {
+    init(encoder: EncoderSettings = .voice, preferredInputUID: @escaping @Sendable () -> String? = { nil }) {
         self.encoder = encoder
+        self.preferredInputUID = preferredInputUID
     }
 
     // MARK: - CaptureEngine conformance
@@ -131,9 +138,9 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
                     cont.resume()
                     return
                 }
-                if let inID = CoreAudioHelpers.defaultInputDeviceID() {
+                if let inID = resolveInputDevice() {
                     let name = CoreAudioHelpers.deviceName(for: inID) ?? "unknown"
-                    logger.info("Mic reconnect: following default input \"\(name)\" id=\(inID)")
+                    logger.info("Mic reconnect: following input \"\(name)\" id=\(inID)")
                 }
                 teardownEngine()
                 do {
@@ -169,12 +176,19 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
     private func buildAndStartEngineOrThrow() throws {
         guard capturingFlag.load(ordering: .acquiring) else { return }
 
-        ensureOutputRateMatchesInput()
+        let inputID = resolveInputDevice()
+        inputDeviceID = inputID
+        ensureOutputRateMatchesInput(inputID)
 
         let newEngine = AVAudioEngine()
         engine = newEngine // store early so teardownEngine() works on failure
         let input = newEngine.inputNode
 
+        // Pavarotti: a chosen microphone other than the default is set on the input
+        // unit before voice processing builds its graph. The default path is unchanged.
+        if let inputID, inputID != CoreAudioHelpers.defaultInputDeviceID() {
+            selectInputDevice(inputID, on: input)
+        }
         try input.setVoiceProcessingEnabled(true)
         input.voiceProcessingOtherAudioDuckingConfiguration = .init(
             enableAdvancedDucking: false, duckingLevel: .min
@@ -192,7 +206,7 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
         guard tapFormat.sampleRate > 0, tapFormat.channelCount > 0 else {
             throw CaptureError.micEngineFailed("The microphone has no usable audio format.")
         }
-        let inputID = CoreAudioHelpers.defaultInputDeviceID() ?? 0
+        let inputID = inputDeviceID ?? CoreAudioHelpers.defaultInputDeviceID() ?? 0
         let outputID = CoreAudioHelpers.defaultOutputDeviceID() ?? 0
         let inputRate = CoreAudioHelpers.nominalSampleRate(for: inputID) ?? 0
         let outputRate = CoreAudioHelpers.nominalSampleRate(for: outputID) ?? 0
@@ -247,9 +261,45 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
         }
     }
 
+    /// Pavarotti: the preferred microphone when it is connected, otherwise the system
+    /// default input.
+    private func resolveInputDevice() -> AudioObjectID? {
+        if let uid = preferredInputUID() {
+            if let id = CoreAudioHelpers.deviceID(forUID: uid) {
+                return id
+            }
+            logger.notice("Preferred microphone \(uid, privacy: .public) is not connected; recording from the system default")
+        }
+        return CoreAudioHelpers.defaultInputDeviceID()
+    }
+
+    /// Pavarotti: points the input unit at `deviceID`. Keeps the system default when the
+    /// unit refuses.
+    private func selectInputDevice(_ deviceID: AudioObjectID, on input: AVAudioInputNode) {
+        let name = CoreAudioHelpers.deviceName(for: deviceID) ?? "unknown"
+        guard let unit = input.audioUnit else {
+            logger.error("Mic input unit missing; recording from the system default instead of \(name, privacy: .public)")
+            return
+        }
+        var objectID = deviceID
+        let status = AudioUnitSetProperty(
+            unit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
+            0,
+            &objectID,
+            UInt32(MemoryLayout<AudioObjectID>.size)
+        )
+        if status == noErr {
+            logger.notice("Mic input set to the chosen microphone \(name, privacy: .public) id=\(deviceID, privacy: .public)")
+        } else {
+            logger.error("Mic input could not be set to \(name, privacy: .public) (status \(status, privacy: .public)); recording from the system default")
+        }
+    }
+
     /// Reconciles duplex device rates before creating the voice-processing graph.
-    private func ensureOutputRateMatchesInput() {
-        guard let inID = CoreAudioHelpers.defaultInputDeviceID(),
+    private func ensureOutputRateMatchesInput(_ inputID: AudioObjectID?) {
+        guard let inID = inputID,
               let inRate = CoreAudioHelpers.nominalSampleRate(for: inID),
               let outID = CoreAudioHelpers.defaultOutputDeviceID(),
               let outRate = CoreAudioHelpers.nominalSampleRate(for: outID)

@@ -2,7 +2,8 @@ import DesignSystem
 import Dictation
 import SwiftUI
 
-// Pavarotti: which microphone dictation records from, and the permission to record it.
+// Pavarotti: which microphone dictation and meeting recordings use, and the permission to
+// record it.
 
 extension DictationSettingsSection {
     @ViewBuilder
@@ -18,7 +19,9 @@ extension DictationSettingsSection {
                 }
             }
             if !controller.isChosenMicrophoneConnected {
-                statusText("Not connected. Dictation records from the system default until it is back.")
+                statusText("Not connected. Pavarotti records from the system default until it is back.")
+            } else {
+                statusText("Dictations and meeting recordings use this microphone.")
             }
         }
         microphoneAccessRow

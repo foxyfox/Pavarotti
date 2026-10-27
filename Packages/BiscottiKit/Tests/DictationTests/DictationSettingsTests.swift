@@ -65,6 +65,20 @@ struct DictationSettingsTests {
         #expect(store.load() == DictationSettings())
     }
 
+    @Test("meeting recordings read the chosen microphone")
+    @MainActor
+    func chosenMicrophoneUID() throws {
+        let suite = "pavarotti.tests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        #expect(DictationSettingsStore.chosenMicrophoneUID(defaults: defaults) == nil)
+
+        var settings = DictationSettings()
+        settings.microphone = MicrophoneDevice(id: "AppleUSBAudioEngine:Apple Inc.:Studio Display", name: "Studio Display Microphone")
+        DictationSettingsStore(defaults: defaults).save(settings)
+        #expect(DictationSettingsStore.chosenMicrophoneUID(defaults: defaults) == "AppleUSBAudioEngine:Apple Inc.:Studio Display")
+    }
+
     @Test("sound choice names")
     func soundChoiceNames() {
         #expect(SoundChoice.none.displayName == "None")

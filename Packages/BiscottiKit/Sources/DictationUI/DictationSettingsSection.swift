@@ -3,8 +3,8 @@ import DesignSystem
 import Dictation
 import SwiftUI
 
-/// The Dictation part of Settings: shortcut, language, microphone, model, Accessibility access,
-/// sounds, audio ducking, the dictionary and the import from TypeWhisper.
+/// The Dictation part of Settings: shortcut, language, microphone (also for meetings), model,
+/// Accessibility access, sounds, audio ducking, the dictionary and the import from TypeWhisper.
 public struct DictationSettingsSection: View {
     let controller: DictationController
     @State var importSummary: String?
@@ -31,7 +31,10 @@ public struct DictationSettingsSection: View {
                     Text("German").tag(TranscriptionLanguage.german)
                     Text("English").tag(TranscriptionLanguage.english)
                 }
-                microphoneRows
+            }
+            // Meeting recordings use the same microphone, so it stays visible without dictation.
+            microphoneRows
+            if controller.settings.isEnabled {
                 modelRows
                 accessibilityRow
                 VStack(alignment: .leading, spacing: Tokens.spacingXS) {
