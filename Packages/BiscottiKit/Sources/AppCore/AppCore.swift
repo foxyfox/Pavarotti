@@ -158,7 +158,7 @@ public struct AutoStopState: Sendable, Equatable {
 /// auto-association, detection -> notification -> record flow,
 /// calendar-start timers, auto-stop countdown).
 @MainActor @Observable
-public final class AppCore { // swiftlint:disable:this type_body_length
+public final class AppCore {
     // MARK: - Published state
 
     /// The current navigation destination.
