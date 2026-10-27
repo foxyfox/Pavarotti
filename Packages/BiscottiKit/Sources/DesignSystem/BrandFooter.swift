@@ -1,3 +1,4 @@
+import Branding
 import SwiftUI
 
 /// A quiet brand sign-off lockup: brand mark, wordmark, and tagline.
@@ -9,7 +10,7 @@ public struct BrandFooter: View {
         VStack(spacing: 3) {
             BrandMark()
 
-            Text("Pavarotti")
+            Text(AppName.display)
                 .font(.system(size: 13, weight: .semibold))
                 .tracking(-0.1)
                 .foregroundStyle(.ink)

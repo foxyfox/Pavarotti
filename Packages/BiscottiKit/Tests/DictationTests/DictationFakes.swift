@@ -67,12 +67,18 @@ final class FakeEngine: DictationTranscribing {
         var prepared: [String] = []
         var installed: [String] = []
         var shutdownCount = 0
+        /// Per model; others download 1 MB and are not in TypeWhisper.
+        var plans: [String: DictationInstallPlan] = [:]
     }
 
     let state = Mutex(State())
 
     func isInstalled(modelID _: String) -> Bool {
         state.withLock { $0.isInstalled }
+    }
+
+    func installPlan(modelID: String) -> DictationInstallPlan {
+        state.withLock { $0.plans[modelID] } ?? DictationInstallPlan(downloadBytes: 1_000_000, copiesModelFromTypeWhisper: false)
     }
 
     func install(modelID: String, progress: @escaping @Sendable (Double) -> Void) async throws {

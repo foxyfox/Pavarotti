@@ -319,7 +319,7 @@ struct SettingsExportFlowTests {
         // the operation was busy (both buttons disabled) and after the
         // spinner had cleared (functional spec §5.2).
         #expect(spy.savePanelNames.count == 1)
-        #expect(spy.savePanelNames[0].hasPrefix("Biscotti_export_"))
+        #expect(spy.savePanelNames[0].hasPrefix("Pavarotti_export_"))
         #expect(spy.savePanelNames[0].hasSuffix(".csv"))
         #expect(spy.busyWhenSaveShown == [true])
         #expect(spy.exportSpinnerWhenSaveShown == [false])

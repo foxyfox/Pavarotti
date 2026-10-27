@@ -1,6 +1,7 @@
 import AppCore
 import AppLinks
 import AppShellUI
+import Branding
 import Carbon
 import DesignSystem
 import Dictation
@@ -102,7 +103,7 @@ struct BiscottiApp: App {
             // ON, it terminates normally. The tray menu always has a
             // real "Quit Biscotti" that terminates regardless.
             CommandGroup(replacing: .appTermination) {
-                Button("Quit Biscotti") {
+                Button("Quit \(AppName.display)") {
                     if appDelegate.launchState.exitOnWindowClose {
                         NSApplication.shared.terminate(nil)
                     } else {
@@ -145,7 +146,7 @@ private struct WindowRootView: View {
             } else if let err = launchState.launchError {
                 errorView(message: err)
             } else {
-                ProgressView("Starting Biscotti\u{2026}")
+                ProgressView("Starting \(AppName.display)\u{2026}")
                     .frame(
                         maxWidth: .infinity,
                         maxHeight: .infinity
@@ -167,7 +168,7 @@ private struct WindowRootView: View {
             Image(systemName: "exclamationmark.triangle")
                 .font(.largeTitle)
                 .foregroundStyle(.signalRed)
-            Text("Failed to start Biscotti")
+            Text("Failed to start \(AppName.display)")
                 .font(.headline)
             Text(message)
                 .font(.body)

@@ -1,5 +1,6 @@
 import AppCore
 import AppKit
+import Branding
 import Calendar
 import DataStore
 import DesignSystem
@@ -112,7 +113,7 @@ public struct SettingsView: View {
                     "Keep app running in tray",
                     isOn: keepRunningInTrayBinding
                 )
-                Text("Biscotti will continue running in menu bar, even if window is closed.")
+                Text("\(AppName.display) will continue running in menu bar, even if window is closed.")
                     .font(Tokens.metadataFont)
                     .foregroundStyle(Tokens.secondaryText)
             }
@@ -139,6 +140,7 @@ public struct SettingsView: View {
             }
             appUpdatesRow
             mcpRow
+            setupRow
         }
     }
 

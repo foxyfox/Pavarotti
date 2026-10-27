@@ -61,6 +61,8 @@ public enum DictationAudio {
 /// Turns recorded samples into text.
 public protocol DictationTranscribing: Sendable {
     func isInstalled(modelID: String) -> Bool
+    /// What installing `modelID` still takes.
+    func installPlan(modelID: String) -> DictationInstallPlan
     func install(modelID: String, progress: @escaping @Sendable (Double) -> Void) async throws
     /// Loads the model so the next transcription is fast.
     func prepare(modelID: String) async throws
@@ -72,6 +74,19 @@ public protocol DictationTranscribing: Sendable {
     ) async throws -> String
     /// Unloads the model.
     func shutdown() async
+}
+
+/// What installing a model still takes, for the setup and Settings.
+public struct DictationInstallPlan: Equatable, Sendable {
+    /// Bytes still to download. Files found in TypeWhisper are copied instead.
+    public var downloadBytes: Int64
+    /// Whether the model file is copied from TypeWhisper.
+    public var copiesModelFromTypeWhisper: Bool
+
+    public init(downloadBytes: Int64, copiesModelFromTypeWhisper: Bool) {
+        self.downloadBytes = downloadBytes
+        self.copiesModelFromTypeWhisper = copiesModelFromTypeWhisper
+    }
 }
 
 /// How text reached the focused app.

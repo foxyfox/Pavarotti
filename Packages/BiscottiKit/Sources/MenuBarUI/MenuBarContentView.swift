@@ -1,4 +1,5 @@
 import AppCore
+import Branding
 import Calendar
 import DataStore
 import DesignSystem
@@ -41,11 +42,11 @@ public struct MenuBarContentView: View {
         }
 
         // Footer
-        Button("Open Biscotti") {
+        Button("Open \(AppName.display)") {
             viewModel.openApp()
         }
 
-        Button("Quit Biscotti") {
+        Button("Quit \(AppName.display)") {
             viewModel.quit()
         }
     }

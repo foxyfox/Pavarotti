@@ -18,6 +18,16 @@ public actor CohereDictationEngine: DictationTranscribing {
         return installer.missingAssets(for: model).isEmpty
     }
 
+    public nonisolated func installPlan(modelID: String) -> DictationInstallPlan {
+        guard let model = CohereModel.model(id: modelID) else {
+            return DictationInstallPlan(downloadBytes: 0, copiesModelFromTypeWhisper: false)
+        }
+        return DictationInstallPlan(
+            downloadBytes: installer.downloadSize(for: model),
+            copiesModelFromTypeWhisper: !installer.isInstalled(model.asset) && installer.hasSeedCopy(of: model.asset)
+        )
+    }
+
     public func install(modelID: String, progress: @escaping @Sendable (Double) -> Void) async throws {
         let model = try Self.model(modelID)
         let throttle = ProgressThrottle()

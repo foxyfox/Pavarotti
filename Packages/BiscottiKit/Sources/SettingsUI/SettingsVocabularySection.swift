@@ -1,3 +1,4 @@
+import Branding
 import DesignSystem
 import SwiftUI
 
@@ -13,7 +14,7 @@ extension SettingsView {
                     isOn: customVocabularyEnabledBinding
                 )
                 Text(
-                    "Help Biscotti recognize uncommon words you use, like names or technical terms."
+                    "Help \(AppName.display) recognize uncommon words you use, like names or technical terms."
                 )
                 .font(Tokens.metadataFont)
                 .foregroundStyle(Tokens.secondaryText)

@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.macOS(.v15)],
     products: [
         .library(name: "BiscottiKit", targets: ["BiscottiKit"]),
+        .library(name: "Branding", targets: ["Branding"]),
         .library(name: "DataStore", targets: ["DataStore"]),
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
         .library(name: "Formatting", targets: ["Formatting"]),
@@ -63,6 +64,11 @@ let package = Package(
             dependencies: ["BiscottiKit"],
             swiftSettings: warningsAsErrors
         ),
+        // Pavarotti: the app name in user-facing text, in one place.
+        .target(
+            name: "Branding",
+            swiftSettings: warningsAsErrors
+        ),
         .target(
             name: "DataStore",
             dependencies: [
@@ -90,6 +96,7 @@ let package = Package(
         .target(
             name: "ImportExport",
             dependencies: [
+                "Branding",
                 "DataStore",
                 "Formatting"
             ],
@@ -103,6 +110,7 @@ let package = Package(
         .target(
             name: "DesignSystem",
             dependencies: [
+                "Branding",
                 "DataStore",
                 "Formatting"
             ],
@@ -116,6 +124,7 @@ let package = Package(
         ),
         .target(
             name: "Permissions",
+            dependencies: ["Branding"],
             swiftSettings: warningsAsErrors
         ),
         .testTarget(
@@ -176,6 +185,7 @@ let package = Package(
             name: "AppCore",
             dependencies: [
                 "AppLinks",
+                "Branding",
                 "DataStore",
                 "Dictation",
                 "ImportExport",
@@ -378,6 +388,7 @@ let package = Package(
             name: "AppShellUI",
             dependencies: [
                 "AppCore",
+                "Branding",
                 "Calendar",
                 "DataStore",
                 "DesignSystem",
@@ -431,6 +442,7 @@ let package = Package(
             name: "SettingsUI",
             dependencies: [
                 "AppCore",
+                "Branding",
                 "Calendar",
                 "DataStore",
                 "DesignSystem",
@@ -473,6 +485,7 @@ let package = Package(
             name: "MenuBarUI",
             dependencies: [
                 "AppCore",
+                "Branding",
                 "Calendar",
                 "DataStore",
                 "DesignSystem",
@@ -505,13 +518,16 @@ let package = Package(
             name: "OnboardingUI",
             dependencies: [
                 "AppCore",
+                "Branding",
                 "Calendar",
                 "DataStore",
                 "DesignSystem",
+                "Dictation",
                 "Intelligence",
                 "ModelManagementUI",
                 "Permissions",
                 "TranscriptionService",
+                .product(name: "CohereTranscribe", package: "CohereTranscribe"),
                 .product(name: "LocalLLM", package: "LocalLLM")
             ],
             swiftSettings: warningsAsErrors
@@ -524,6 +540,7 @@ let package = Package(
                 "BiscottiTestSupport",
                 "Calendar",
                 "DataStore",
+                "Dictation",
                 "Intelligence",
                 "MeetingCatalog",
                 "Permissions",
@@ -647,6 +664,7 @@ let package = Package(
         .target(
             name: "SummaryPromptUI",
             dependencies: [
+                "Branding",
                 "DesignSystem",
                 "MarkdownEditorUI"
             ],

@@ -1,3 +1,4 @@
+import Branding
 import DesignSystem
 import SwiftUI
 
@@ -151,7 +152,7 @@ struct VocabularyListSheet: View {
 
     private var emptyState: some View {
         Text(
-            "No words yet. Add names, company names, or technical terms Biscotti should listen for."
+            "No words yet. Add names, company names, or technical terms \(AppName.display) should listen for."
         )
         .font(Tokens.metadataFont)
         .foregroundStyle(Tokens.secondaryText)

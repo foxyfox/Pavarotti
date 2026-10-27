@@ -162,7 +162,7 @@ struct MeetingCSVExporterTests {
         #expect(try rows(in: smallText).count == 6)
     }
 
-    @Test("The filename is Biscotti_export_{yyyy-MM-dd-HHmmss}.csv in local time")
+    @Test("The filename is Pavarotti_export_{yyyy-MM-dd-HHmmss}.csv in local time")
     func fileNameShape() throws {
         var components = DateComponents()
         components.year = 2026
@@ -175,7 +175,7 @@ struct MeetingCSVExporterTests {
         let now = try #require(Calendar.current.date(from: components))
         #expect(
             MeetingCSVExporter.fileName(for: now)
-                == "Biscotti_export_2026-09-01-142642.csv"
+                == "Pavarotti_export_2026-09-01-142642.csv"
         )
     }
 
