@@ -86,7 +86,7 @@ public struct DictationSettingsSection: View {
     private var engineStatus: some View {
         switch controller.engineState {
         case .notInstalled:
-            statusText("Not installed. An existing TypeWhisper download is copied instead of downloaded.")
+            statusText(Self.notInstalledText(controller.installPlan))
         case let .installing(fraction):
             ProgressView(value: fraction) {
                 statusText("Installing \(Int(fraction * 100)) %")
@@ -186,6 +186,14 @@ public struct DictationSettingsSection: View {
         Text(text)
             .font(Tokens.metadataFont)
             .foregroundStyle(Tokens.secondaryText)
+    }
+
+    static func notInstalledText(_ plan: DictationInstallPlan) -> String {
+        if plan.copiesModelFromTypeWhisper {
+            return "Not installed. TypeWhisper already has this model, so it is copied instead of downloaded."
+        }
+        let size = ByteCountFormatter.string(fromByteCount: plan.downloadBytes, countStyle: .file)
+        return "Not installed. Installing downloads \(size)."
     }
 
     static func size(of model: CohereModel) -> String {

@@ -1,4 +1,5 @@
 import AppCore
+import Branding
 import Calendar
 import DesignSystem
 import HomeUI
@@ -156,7 +157,7 @@ public struct AppShellView: View {
     private var sidebarBrandLockup: some View {
         HStack(spacing: 6) {
             BrandMark()
-            Text("Pavarotti")
+            Text(AppName.display)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.ink)
         }

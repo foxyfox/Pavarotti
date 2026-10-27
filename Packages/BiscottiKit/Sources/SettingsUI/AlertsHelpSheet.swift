@@ -1,3 +1,4 @@
+import Branding
 import DesignSystem
 import SwiftUI
 
@@ -18,12 +19,12 @@ struct AlertsHelpSheet: View {
                 .font(.headline)
 
             Text(
-                "macOS decides how long notifications stay on screen. To keep Biscotti\u{2019}s notifications visible until you dismiss them, set their style to \u{201C}Alerts\u{201D}."
+                "macOS decides how long notifications stay on screen. To keep \(AppName.display)\u{2019}s notifications visible until you dismiss them, set their style to \u{201C}Alerts\u{201D}."
             )
 
             VStack(alignment: .leading, spacing: Tokens.spacingSM) {
                 stepRow(number: 1, text: "Open System Settings \u{2192} Notifications")
-                stepRow(number: 2, text: "Select Biscotti")
+                stepRow(number: 2, text: "Select \(AppName.display)")
                 stepRow(number: 3, text: "Set the alert style to \u{201C}Alerts\u{201D}")
             }
 

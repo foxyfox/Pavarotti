@@ -1,3 +1,4 @@
+import Branding
 import DesignSystem
 import MarkdownEditorUI
 import SwiftUI
@@ -114,7 +115,7 @@ public struct SummaryPromptSheet: View {
     private var subtitleText: String {
         switch model.mode {
         case .global:
-            "These are the instructions Biscotti sends the on-device model to write each meeting summary. Edit them directly. Changes apply to every future summary."
+            "These are the instructions \(AppName.display) sends the on-device model to write each meeting summary. Edit them directly. Changes apply to every future summary."
         case .perMeeting:
             "Re-summarize this meeting with AI, optionally changing the prompt."
         }

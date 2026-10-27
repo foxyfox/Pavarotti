@@ -2,6 +2,7 @@ import AppCore
 import AppKit
 import Calendar
 import DataStore
+import Dictation
 import Foundation
 import Intelligence
 import LocalLLM
@@ -118,9 +119,9 @@ public final class OnboardingViewModel {
         calendarResult == .authorized
     }
 
-    /// Whether all four permissions have been granted.
+    /// Whether all four permissions have been granted, and Accessibility for dictation.
     public var allPermissionsGranted: Bool {
-        microphoneGranted && systemAudioGranted && calendarGranted && notificationsGranted
+        microphoneGranted && systemAudioGranted && calendarGranted && notificationsGranted && accessibilityGranted
     }
 
     // MARK: - AppCore exposure (for sheet construction)
@@ -151,7 +152,7 @@ public final class OnboardingViewModel {
         case .permissions:
             allPermissionsGranted ? .continueButton : .skip
         case .modelDownload:
-            bothModelsStarted ? .continueButton : .skip
+            allModelsStarted ? .continueButton : .skip
         }
     }
 
@@ -162,6 +163,10 @@ public final class OnboardingViewModel {
 
     /// Disk space check for the model download step.
     public private(set) var hasSufficientDisk: Bool = true
+
+    /// Pavarotti: what installing the Cohere model takes, read when the model step is
+    /// prepared; `nil` before.
+    var dictationFacts: DictationRowFacts?
 
     /// Approximate disk space required for the transcription model (MB).
     /// Aligned with the ~1.5 GB WhisperKit model bundle.
@@ -394,6 +399,7 @@ public final class OnboardingViewModel {
         await core.modelManager.refresh()
         transcriptionDownloaded = await core.transcription.modelsArePresent()
         checkDiskSpace()
+        prepareDictationRow(availableBytes: availableDiskBytes())
     }
 
     /// Reads the live system permission state for the current step

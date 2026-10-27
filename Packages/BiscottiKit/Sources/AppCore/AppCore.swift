@@ -1,5 +1,6 @@
 import AppKit
 import AppLinks
+import Branding
 import Calendar
 import DataStore
 import Dictation
@@ -105,7 +106,7 @@ public enum AppLinkError: String, Sendable, Equatable {
     public var message: String {
         switch self {
         case .meetingNotFound:
-            "This link points to a meeting that is no longer in Biscotti. It may have been deleted."
+            "This link points to a meeting that is no longer in \(AppName.display). It may have been deleted."
         case .eventNotFound:
             "This link points to a calendar event that is no longer upcoming. It may have ended, moved, or been cancelled."
         }

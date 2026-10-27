@@ -1,4 +1,5 @@
 import AppKit
+import Branding
 import SwiftUI
 
 /// Instructional sheet guiding the user to add a calendar account to the
@@ -20,7 +21,7 @@ public struct ConnectCalendarSheet: View {
 
             // Subtitle
             Text(
-                "Biscotti reads your schedule from the Mac\u{2019}s Calendar app. "
+                "\(AppName.display) reads your schedule from the Mac\u{2019}s Calendar app. "
                     + "Add your account there once and your calendars appear here automatically."
             )
             .foregroundStyle(.inkSecondary)

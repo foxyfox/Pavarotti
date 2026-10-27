@@ -79,6 +79,25 @@ struct InstallerTests {
         #expect(downloader.log.isEmpty)
     }
 
+    @Test("A seed copy counts as available and is left out of the download size")
+    func seedCopyIsNotDownloaded() throws {
+        let installer = CohereInstaller(root: root, seedRoots: [seed], downloader: FakeDownloader(contents: [:]))
+        let model = CohereModel.recommended
+        let total = CohereAssetCatalog.assets(for: model).reduce(Int64(0)) { $0 + $1.size }
+        #expect(!installer.hasSeedCopy(of: model.asset))
+        #expect(installer.downloadSize(for: model) == total)
+
+        let copy = seed.appending(path: model.asset.relativePath)
+        try FileManager.default.createDirectory(at: copy.deletingLastPathComponent(), withIntermediateDirectories: true)
+        #expect(FileManager.default.createFile(atPath: copy.path, contents: nil))
+        let handle = try FileHandle(forWritingTo: copy)
+        try handle.truncate(atOffset: UInt64(model.asset.size))
+        try handle.close()
+
+        #expect(installer.hasSeedCopy(of: model.asset))
+        #expect(installer.downloadSize(for: model) == total - model.asset.size)
+    }
+
     @Test("A seed copy with another size is ignored")
     func ignoresWrongSizeSeed() async throws {
         let payload = Data("current model".utf8)

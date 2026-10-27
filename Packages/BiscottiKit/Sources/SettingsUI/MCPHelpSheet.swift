@@ -1,4 +1,5 @@
 import AppKit
+import Branding
 import DesignSystem
 import MCPServer
 import SwiftUI
@@ -25,7 +26,7 @@ struct MCPHelpSheet: View {
                 .font(.headline)
 
             Text(
-                "Add Biscotti MCP to any agent to chat with your meeting notes."
+                "Add \(AppName.display) MCP to any agent to chat with your meeting notes."
             )
 
             VStack(alignment: .leading, spacing: Tokens.spacingXS) {

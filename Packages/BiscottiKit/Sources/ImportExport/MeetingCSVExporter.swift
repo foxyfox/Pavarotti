@@ -1,3 +1,4 @@
+import Branding
 import DataStore
 import Formatting
 import Foundation
@@ -102,7 +103,7 @@ public struct MeetingCSVExporter: Sendable {
         ])
     }
 
-    /// `Biscotti_export_2026-09-01-142642.csv` — local time (functional
+    /// `Pavarotti_export_2026-09-01-142642.csv` — local time (functional
     /// spec §5.2). The formatter is created per call: `DateFormatter` is
     /// not `Sendable`, so a cached static would not compile under Swift 6
     /// strict concurrency (the `ISO8601Formatting` precedent).
@@ -111,7 +112,7 @@ public struct MeetingCSVExporter: Sendable {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd-HHmmss"
         formatter.timeZone = .current
-        return "Biscotti_export_\(formatter.string(from: now)).csv"
+        return "\(AppName.display)_export_\(formatter.string(from: now)).csv"
     }
 }
 

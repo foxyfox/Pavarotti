@@ -55,6 +55,8 @@ targets:
       - package: BiscottiKit
         product: AppShellUI
       - package: BiscottiKit
+        product: Branding
+      - package: BiscottiKit
         product: AppCore
       - package: BiscottiKit
         product: AppLinks

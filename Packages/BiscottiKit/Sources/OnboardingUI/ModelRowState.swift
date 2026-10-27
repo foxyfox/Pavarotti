@@ -156,7 +156,7 @@ public extension OnboardingViewModel {
     /// model-download step when "Continue" is available (both models
     /// started) but at least one download is still in progress.
     var footerCaption: String {
-        guard currentStep == .modelDownload, bothModelsStarted, !bothModelsReady else {
+        guard currentStep == .modelDownload, allModelsStarted, !allModelsReady else {
             return ""
         }
         return "Downloads will continue in the background"

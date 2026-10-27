@@ -3,14 +3,16 @@ import SwiftUI
 
 // MARK: - ModelCard
 
-/// Two-row card for the model download onboarding step.
-/// Transcription row on top, language row on bottom, separated
-/// by an inset divider matching the permission card chrome.
+/// Card for the model download onboarding step: the Cohere dictation
+/// row (Pavarotti), the transcription row and the language row, separated
+/// by inset dividers matching the permission card chrome.
 struct ModelCard: View {
     @Bindable var viewModel: OnboardingViewModel
 
     var body: some View {
         VStack(spacing: 0) {
+            dictationRow
+
             transcriptionRow
 
             InsetDivider(leadingInset: 48)
@@ -24,7 +26,7 @@ struct ModelCard: View {
     private var transcriptionRow: some View {
         ModelDownloadRow(
             icon: "waveform",
-            name: "Transcription & Speaker ID",
+            name: "Meeting Transcription & Speaker ID",
             why: "Turns speech into text and labels who\u{2019}s speaking.",
             state: viewModel.transcriptionRowState(),
             onDownload: {

@@ -49,6 +49,19 @@ public struct CohereInstaller: Sendable {
         CohereAssetCatalog.assets(for: model).filter { !isInstalled($0) }
     }
 
+    /// Whether a seed directory holds a copy of `asset` that installing would use instead of
+    /// a download.
+    public func hasSeedCopy(of asset: CohereAsset) -> Bool {
+        seedFile(for: asset) != nil
+    }
+
+    /// The bytes installing `model` still downloads: missing assets without a seed copy.
+    public func downloadSize(for model: CohereModel) -> Int64 {
+        missingAssets(for: model)
+            .filter { !hasSeedCopy(of: $0) }
+            .reduce(Int64(0)) { $0 + $1.size }
+    }
+
     /// Installs everything `model` needs. Already installed assets are skipped.
     public func install(
         model: CohereModel,

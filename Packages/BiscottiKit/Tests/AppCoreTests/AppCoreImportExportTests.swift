@@ -142,7 +142,7 @@ struct AppCoreImportExportTests {
 
         let url = try await fix.core.exportMeetingsCSV(to: directory)
 
-        #expect(url.lastPathComponent.hasPrefix("Biscotti_export_"))
+        #expect(url.lastPathComponent.hasPrefix("Pavarotti_export_"))
         #expect(url.lastPathComponent.hasSuffix(".csv"))
 
         let text = try String(contentsOf: url, encoding: .utf8)

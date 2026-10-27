@@ -294,14 +294,13 @@ public final class SettingsViewModel {
 
     // MARK: - Debug actions
 
-    #if DEBUG
-        /// Re-runs the onboarding wizard from the beginning.
-        /// Debug-only: lets developers verify the onboarding flow
-        /// without resetting the app's data.
-        public func replayOnboarding() {
-            core.showOnboardingReplay()
-        }
+    /// Re-runs the onboarding wizard from the beginning, without resetting the
+    /// app's data. Pavarotti: also in release builds, as "Run Setup Again".
+    public func replayOnboarding() {
+        core.showOnboardingReplay()
+    }
 
+    #if DEBUG
         /// Debug-only: clears the persisted language-model selection so the
         /// app reverts to the hardware-recommended default.
         public func clearSelectedModel() {

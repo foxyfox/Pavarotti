@@ -1,3 +1,5 @@
+import Branding
+
 /// The permission state for system-audio capture.
 ///
 /// System audio gets its own state type (distinct from the shared
@@ -32,12 +34,12 @@ public enum SystemAudioPermissionState: String, Sendable, CaseIterable, Equatabl
     // MARK: - Fix-permissions alert copy (shared by Settings, Onboarding, and Stage 3)
 
     /// Alert title for the "Fix permissions" flow.
-    public static let fixPermissionsAlertTitle = "Allow Biscotti to record system audio"
+    public static let fixPermissionsAlertTitle = "Allow \(AppName.display) to record system audio"
 
     /// Alert body for the "Fix permissions" flow.
     public static let fixPermissionsAlertBody =
-        "Biscotti couldn\u{2019}t confirm permission to record your computer\u{2019}s audio. "
+        "\(AppName.display) couldn\u{2019}t confirm permission to record your computer\u{2019}s audio. "
             + "macOS doesn\u{2019}t let apps re-ask directly \u{2014} turn it on in "
             + "System Settings: Privacy & Security \u{2192} System Audio Recording, "
-            + "enable Biscotti, then return and tap Retry."
+            + "enable \(AppName.display), then return and tap Retry."
 }

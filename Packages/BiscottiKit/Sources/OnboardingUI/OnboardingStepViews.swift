@@ -1,4 +1,5 @@
 import AppKit
+import Branding
 import Calendar
 import DesignSystem
 import ModelManagementUI
@@ -12,12 +13,12 @@ extension OnboardingView {
 
     var welcomeStep: some View {
         VStack(spacing: 0) {
-            Text("Welcome to Biscotti")
+            Text("Welcome to \(AppName.display)")
                 .font(.biscottiSerif(46))
                 .foregroundStyle(.ink)
 
             Text(
-                "Private, on-device meeting transcripts.\nNothing you say ever leaves your Mac."
+                "Private, on-device dictation and meeting transcripts.\nNothing you say ever leaves your Mac."
             )
             .font(.system(size: 16))
             .foregroundStyle(.inkSecondary)
@@ -82,6 +83,12 @@ extension OnboardingView {
             InsetDivider(leadingInset: 48)
 
             notificationsRow
+
+            if viewModel.dictation != nil {
+                InsetDivider(leadingInset: 48)
+
+                accessibilityRow
+            }
         }
         .homeCard()
         .frame(maxWidth: 520)
@@ -93,7 +100,7 @@ extension OnboardingView {
         PermissionRow(
             icon: "mic.fill",
             name: "Microphone",
-            why: "Record your voice locally to transcribe your meetings."
+            why: "Record your voice locally for dictation and meeting transcripts."
         ) {
             if viewModel.microphoneGranted {
                 GrantedTag()
@@ -263,7 +270,7 @@ extension OnboardingView {
                 .foregroundStyle(.ink)
 
             Text(
-                "If you use Google Calendar in the browser, add your Google account to the Mac\u{2019}s Calendar app so Biscotti can see your events."
+                "If you use Google Calendar in the browser, add your Google account to the Mac\u{2019}s Calendar app so \(AppName.display) can see your events."
             )
             .font(.system(size: 14))
             .foregroundStyle(.inkSecondary)
@@ -351,7 +358,7 @@ extension OnboardingView {
                 .font(.biscottiSerif(50))
                 .foregroundStyle(.ink)
 
-            Text("Start recording your first meeting whenever you like.")
+            Text("Dictate with your shortcut, or record your first meeting whenever you like.")
                 .font(.system(size: 16))
                 .foregroundStyle(.inkSecondary)
                 .padding(.top, 18)
