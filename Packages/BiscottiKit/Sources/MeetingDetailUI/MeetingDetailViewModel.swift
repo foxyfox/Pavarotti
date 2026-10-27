@@ -1408,9 +1408,9 @@ public extension MeetingDetailViewModel {
     }
 
     /// Navigates to Settings so the user can download the model or
-    /// enable the summarize toggle.
+    /// enable the summarize toggle. Pavarotti: on the AI page.
     func openSettings() {
-        core.showSettings()
+        core.showSettings(.intelligence)
     }
 }
 
