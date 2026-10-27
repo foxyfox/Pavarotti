@@ -156,7 +156,7 @@ public struct AppShellView: View {
     private var sidebarBrandLockup: some View {
         HStack(spacing: 6) {
             BrandMark()
-            Text("Biscotti")
+            Text("Pavarotti")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.ink)
         }
