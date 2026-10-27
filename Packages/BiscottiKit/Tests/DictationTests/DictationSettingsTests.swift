@@ -28,6 +28,7 @@ struct DictationSettingsTests {
         settings.doneSound = .none
         settings.ducksAudio = true
         settings.duckingLevel = 0.35
+        settings.learnsFromCorrections = false
         let data = try JSONEncoder().encode(settings)
         let decoded = try JSONDecoder().decode(DictationSettings.self, from: data)
         #expect(decoded == settings)

@@ -156,7 +156,7 @@ public extension DictationController {
         TypeWhisperImport.isAvailable
     }
 
-    /// Takes over TypeWhisper's sounds, ducking and shortcut and returns a summary.
+    /// Takes over TypeWhisper's sounds, ducking, shortcut and dictionary and returns a summary.
     @discardableResult
     func importFromTypeWhisper() -> String {
         guard let defaults = UserDefaults(suiteName: TypeWhisperImport.preferencesDomain) else {
@@ -171,6 +171,35 @@ public extension DictationController {
         )
         update { $0 = outcome.settings }
         refreshCustomSounds()
-        return outcome.summary
+        let dictionaryPart = TypeWhisperImport.importDictionary(
+            into: dependencies.dictionary,
+            supportDirectory: TypeWhisperImport.supportDirectory
+        )
+        guard let dictionaryPart else { return outcome.summary }
+        let nothingElse = outcome.imported.isEmpty && outcome.skipped.isEmpty
+        return nothingElse ? dictionaryPart : outcome.summary + " " + dictionaryPart
+    }
+}
+
+public extension TypeWhisperImport {
+    /// Takes over the corrections from TypeWhisper's dictionary and describes the result,
+    /// or returns `nil` when TypeWhisper has no dictionary.
+    @MainActor
+    static func importDictionary(into dictionary: PersonalDictionary, supportDirectory: URL) -> String? {
+        let store = TypeWhisperDictionaryReader.storeURL(in: supportDirectory)
+        guard FileManager.default.fileExists(atPath: store.path) else { return nil }
+        do {
+            let contents = try TypeWhisperDictionaryReader.read(storeAt: store)
+            let added = dictionary.merge(contents.corrections)
+            var text = "Dictionary: \(added) of \(contents.corrections.count) corrections added."
+            switch contents.termCount {
+            case 0: break
+            case 1: text += " 1 term left out, Cohere cannot use it."
+            default: text += " \(contents.termCount) terms left out, Cohere cannot use them."
+            }
+            return text
+        } catch {
+            return "Dictionary skipped: \(error.localizedDescription)"
+        }
     }
 }

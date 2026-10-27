@@ -4,7 +4,8 @@ import Observation
 import SwiftUI
 
 /// A small floating pill at the bottom of the screen that shows when dictation is
-/// listening, transcribing or failed. It never takes focus or clicks.
+/// listening, transcribing or failed, and briefly what the dictionary learned. It
+/// never takes focus or clicks.
 @MainActor
 public final class DictationIndicator {
     private let controller: DictationController
@@ -22,18 +23,18 @@ public final class DictationIndicator {
     }
 
     private func observePhase() {
-        let phase = withObservationTracking {
-            controller.phase
+        let isVisible = withObservationTracking {
+            controller.phase != .idle || controller.notice != nil
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.observePhase()
             }
         }
-        show(phase)
+        show(isVisible)
     }
 
-    private func show(_ phase: DictationController.Phase) {
-        guard phase != .idle else {
+    private func show(_ isVisible: Bool) {
+        guard isVisible else {
             panel?.orderOut(nil)
             return
         }
@@ -98,7 +99,8 @@ struct DictationIndicatorView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
         case .idle:
-            EmptyView()
+            Image(systemName: "character.book.closed.fill")
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -107,7 +109,7 @@ struct DictationIndicatorView: View {
         case .listening: "Listening\u{2026}"
         case .transcribing: "Transcribing\u{2026}"
         case let .failed(text): text
-        case .idle: ""
+        case .idle: controller.notice ?? ""
         }
     }
 }
