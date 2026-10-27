@@ -411,8 +411,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate,
                 appropriateFor: nil,
                 create: true
             )
+            // Pavarotti keeps its own data next to an installed Biscotti.
+            // Model caches stay shared under `Biscotti/` (see ModelStorage).
             let storageRoot = appSupport
-                .appendingPathComponent("Biscotti")
+                .appendingPathComponent("Pavarotti")
             try FileManager.default.createDirectory(
                 at: storageRoot,
                 withIntermediateDirectories: true

@@ -12,7 +12,7 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>Biscotti</string>
+    <string>Pavarotti</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSApplicationCategoryType</key>
@@ -26,11 +26,11 @@
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Biscotti needs microphone access to record your voice during meetings.</string>
+    <string>Pavarotti needs microphone access to record your voice during meetings.</string>
     <key>NSAudioCaptureUsageDescription</key>
-    <string>Biscotti needs system audio access to record other meeting participants.</string>
+    <string>Pavarotti needs system audio access to record other meeting participants.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>Biscotti reads your calendar to show upcoming meetings and enrich recordings with event details.</string>
+    <string>Pavarotti reads your calendar to show upcoming meetings and enrich recordings with event details.</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

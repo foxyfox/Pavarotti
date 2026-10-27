@@ -450,7 +450,8 @@ public final class AppCore { // swiftlint:disable:this type_body_length
         logger.info("onLaunch: routing to home")
         route = .home
 
-        updateChecker.startPeriodicChecks()
+        // Pavarotti: no automatic checks against upstream Biscotti releases.
+        // The manual check in Settings still reports new upstream versions.
 
         await startBackgroundServices()
 
@@ -658,7 +659,8 @@ public final class AppCore { // swiftlint:disable:this type_body_length
 
         route = .home
 
-        updateChecker.startPeriodicChecks()
+        // Pavarotti: no automatic checks against upstream Biscotti releases.
+        // The manual check in Settings still reports new upstream versions.
 
         // Start background services deferred during onboarding
         await startBackgroundServices()
