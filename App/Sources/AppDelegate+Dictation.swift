@@ -7,6 +7,7 @@ import DictationUI
 extension AppDelegate {
     /// Starts dictation: loads the Cohere model when it is installed, watches the
     /// shortcut and shows the indicator while listening.
+    @MainActor
     func startDictation(on appCore: AppCore) {
         let runtime = DictationRuntime.live()
         appCore.dictation = runtime.controller
