@@ -301,6 +301,10 @@ public final class AppCore {
     /// and previews, where Settings then leaves the dictation section out.
     public var dictation: DictationController?
 
+    /// Pavarotti: the cloud LLM choice and its API keys. Set by `live`; `nil` in tests
+    /// and previews, where Settings then leaves the provider section out.
+    public var cloudLLM: CloudLLMSettingsStore?
+
     // MARK: - Private
 
     private let scheduler: any AppScheduler
