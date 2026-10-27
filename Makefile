@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 SHELL := /bin/bash
 
-PACKAGES := Packages/BiscottiKit Packages/Transcription Packages/AudioCapture Packages/LocalLLM
+PACKAGES := Packages/BiscottiKit Packages/Transcription Packages/AudioCapture Packages/LocalLLM Packages/CohereTranscribe
 LINT_PATHS := $(wildcard Packages App ManualTestApp XPCServices)
 
 # SwiftLint is pinned to an exact version. Homebrew cannot pin a formula version

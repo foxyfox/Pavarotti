@@ -1,0 +1,99 @@
+import Foundation
+
+/// A finished transcription.
+public struct CohereTranscription: Sendable, Equatable {
+    /// One stretch of speech with its time range in seconds.
+    public struct Segment: Sendable, Equatable {
+        public let start: Double
+        public let end: Double
+        public let text: String
+
+        public init(start: Double, end: Double, text: String) {
+            self.start = start
+            self.end = end
+            self.text = text
+        }
+    }
+
+    public let text: String
+    /// ISO 639-1 code of the language the text is in.
+    public let language: String
+    public let segments: [Segment]
+
+    public init(text: String, language: String, segments: [Segment]) {
+        self.text = text
+        self.language = language
+        self.segments = segments
+    }
+}
+
+/// The server's OpenAI-compatible `verbose_json` answer.
+struct ServerTranscription: Decodable, Equatable {
+    struct Segment: Decodable, Equatable {
+        let start: Double
+        let end: Double
+        let text: String
+    }
+
+    let text: String
+    let language: String?
+    let segments: [Segment]?
+
+    static func decode(_ data: Data) throws -> ServerTranscription {
+        do {
+            return try JSONDecoder().decode(ServerTranscription.self, from: data)
+        } catch {
+            throw CohereError.invalidResponse
+        }
+    }
+}
+
+/// An upload to `POST /v1/audio/transcriptions` as `multipart/form-data`.
+struct TranscriptionRequest {
+    let audio: Data
+    let filename: String
+    let model: String
+    let language: String
+    var boundary = "pavarotti-\(UUID().uuidString)"
+
+    var contentType: String {
+        "multipart/form-data; boundary=\(boundary)"
+    }
+
+    var body: Data {
+        var body = Data()
+        body.append(Data("--\(boundary)\r\n".utf8))
+        body.append(Data("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".utf8))
+        body.append(Data("Content-Type: \(Self.mimeType(for: filename))\r\n\r\n".utf8))
+        body.append(audio)
+        body.append(Data("\r\n".utf8))
+        for (name, value) in [("model", model), ("response_format", "verbose_json"), ("language", language)] {
+            body.append(Data("--\(boundary)\r\n".utf8))
+            body.append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
+            body.append(Data("\(value)\r\n".utf8))
+        }
+        body.append(Data("--\(boundary)--\r\n".utf8))
+        return body
+    }
+
+    func urlRequest(endpoint: URL, apiKey: String) -> URLRequest {
+        var request = URLRequest(url: endpoint.appending(path: "v1/audio/transcriptions"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 600
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.httpBody = body
+        return request
+    }
+
+    static func mimeType(for filename: String) -> String {
+        switch URL(fileURLWithPath: filename).pathExtension.lowercased() {
+        case "wav": "audio/wav"
+        case "mp3": "audio/mpeg"
+        case "m4a", "mp4": "audio/mp4"
+        case "flac": "audio/flac"
+        case "ogg": "audio/ogg"
+        default: "application/octet-stream"
+        }
+    }
+}
