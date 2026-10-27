@@ -4,14 +4,14 @@ import Foundation
 
 /// Shared logic for resolving the `--store` path and opening a DataStore.
 enum StoreLocation {
-    /// The default store directory: `~/Library/Application Support/Biscotti`.
+    /// The default store directory: `~/Library/Application Support/Pavarotti`.
     static let defaultPath: String = {
         guard let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask
         ).first else {
-            return NSString("~/Library/Application Support/Biscotti").expandingTildeInPath
+            return NSString("~/Library/Application Support/Pavarotti").expandingTildeInPath
         }
-        return appSupport.appendingPathComponent("Biscotti").path
+        return appSupport.appendingPathComponent("Pavarotti").path
     }()
 
     /// True when `path` (nil = default) resolves to the app's own store directory.

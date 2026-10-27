@@ -61,7 +61,14 @@ public extension AppCore {
         let calendar = CalendarService(store: store, catalog: catalog)
 
         logger.info("AppCore.live: MeetingDetector init")
-        let detector = MeetingDetector(catalog: catalog)
+        // Exclude our own mic use by the running bundle ID, which differs
+        // from upstream Biscotti's in the Pavarotti fork.
+        let detector = MeetingDetector(
+            catalog: catalog,
+            source: LiveActivitySource(),
+            clock: AnyClock(ContinuousClock()),
+            selfBundlePrefix: Bundle.main.bundleIdentifier ?? "de.foxagon.pavarotti"
+        )
 
         logger.info("AppCore.live: NotificationService init")
         let notifications = NotificationService()

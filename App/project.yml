@@ -1,6 +1,6 @@
 name: Biscotti
 options:
-  bundleIdPrefix: net.scosman
+  bundleIdPrefix: de.foxagon
   deploymentTarget:
     macOS: "15.0"
   createIntermediateGroups: true
@@ -17,9 +17,9 @@ settings:
     GCC_TREAT_WARNINGS_AS_ERRORS: YES
     OTHER_SWIFT_FLAGS: "$(inherited) -warnings-as-errors"
     CODE_SIGN_STYLE: Manual
-    CODE_SIGN_IDENTITY: "Developer ID Application"   # Developer ID for distribution; make build-app overrides to ad-hoc
-    DEVELOPMENT_TEAM: B5L5M4B62J                      # Stephen Cosman (Developer ID Application)
-    INFOPLIST_KEY_CFBundleDisplayName: "Biscotti"
+    CODE_SIGN_IDENTITY: "-"   # Pavarotti: local builds only; scripts/fork/build-and-install.sh re-signs with a stable identity
+    DEVELOPMENT_TEAM: ""
+    INFOPLIST_KEY_CFBundleDisplayName: "Pavarotti"
     ENABLE_HARDENED_RUNTIME: YES
 
 packages:
@@ -42,7 +42,8 @@ targets:
       - Resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: net.scosman.biscotti
+        PRODUCT_BUNDLE_IDENTIFIER: de.foxagon.pavarotti
+        PRODUCT_NAME: Pavarotti
         INFOPLIST_FILE: Resources/Info.plist
         GENERATE_INFOPLIST_FILE: "NO"
         CODE_SIGN_ENTITLEMENTS: Biscotti.entitlements

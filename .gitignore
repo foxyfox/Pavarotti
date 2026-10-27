@@ -22,3 +22,6 @@ calibration.json
 clean-worktree*
 
 .worktrees/
+
+# Pavarotti fork build output (scripts/fork)
+/build/

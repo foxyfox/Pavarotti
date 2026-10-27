@@ -445,7 +445,8 @@ public final class AppCore {
         logger.info("onLaunch: routing to home")
         route = .home
 
-        updateChecker.startPeriodicChecks()
+        // Pavarotti: no automatic checks against upstream Biscotti releases.
+        // The manual check in Settings still reports new upstream versions.
 
         await startBackgroundServices()
 
@@ -653,7 +654,8 @@ public final class AppCore {
 
         route = .home
 
-        updateChecker.startPeriodicChecks()
+        // Pavarotti: no automatic checks against upstream Biscotti releases.
+        // The manual check in Settings still reports new upstream versions.
 
         // Start background services deferred during onboarding
         await startBackgroundServices()
