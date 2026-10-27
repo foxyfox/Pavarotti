@@ -49,18 +49,23 @@ public final class ShortcutMonitor {
         tracker = ModifierKeyTracker(key: key)
         let mask: NSEvent.EventTypeMask = [.flagsChanged, .keyDown]
         let global = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] event in
-            self?.handle(type: event.type, rawFlags: event.modifierFlags.rawValue)
+            self?.handle(event)
         }
         let local = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
-            self?.handle(type: event.type, rawFlags: event.modifierFlags.rawValue)
+            self?.handle(event)
             return event
         }
         eventMonitors = [global, local].compactMap(\.self)
     }
 
-    private func handle(type: NSEvent.EventType, rawFlags: UInt) {
-        guard let event = nextEvent(type: type, rawFlags: rawFlags) else { return }
-        onEvent?(event)
+    private func handle(_ event: NSEvent) {
+        // Pavarotti's own paste chord holds Command, which must not count as the shortcut.
+        guard event.cgEvent.map(SyntheticKeyboardMarker.isPasteShortcut) != true,
+              let shortcutEvent = nextEvent(type: event.type, rawFlags: event.modifierFlags.rawValue)
+        else {
+            return
+        }
+        onEvent?(shortcutEvent)
     }
 
     private func nextEvent(type: NSEvent.EventType, rawFlags: UInt) -> ShortcutEvent? {

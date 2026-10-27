@@ -79,6 +79,30 @@ public enum TextInsertionResult: Equatable, Sendable {
     case pasted
     /// The text is on the clipboard, but could not be pasted (no Accessibility access).
     case copiedOnly
+    /// A paste into a remote desktop was not sent.
+    case notPasted(PasteSkipReason)
+}
+
+/// Why a paste into a remote desktop was not sent.
+public enum PasteSkipReason: Equatable, Sendable {
+    /// The remote desktop window was no longer in front. The text is on the clipboard.
+    case remoteWindowNotInFront
+    /// Something else wrote to the clipboard during the clipboard sync, twice.
+    case clipboardChanged
+    /// The dictation was cancelled during the clipboard sync. The clipboard is as before.
+    case cancelled
+
+    /// What the indicator says. `nil` when the user cancelled.
+    public var message: String? {
+        switch self {
+        case .remoteWindowNotInFront:
+            "Not pasted: the remote desktop was no longer in front. The text is on the clipboard."
+        case .clipboardChanged:
+            "Not pasted: the clipboard changed during the sync with the remote desktop. The text is in Recent Dictations."
+        case .cancelled:
+            nil
+        }
+    }
 }
 
 /// Puts text into the focused app.
