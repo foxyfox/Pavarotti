@@ -162,7 +162,8 @@ public final class DictationController {
             return
         }
         guard !DictationAudio.isSilent(samples) else {
-            Self.logger.warning("The microphone recorded only silence (\(settings.microphone?.name ?? "system default", privacy: .public))")
+            let microphone = settings.microphone?.name ?? "system default"
+            Self.logger.warning("The microphone recorded only silence (\(microphone, privacy: .public))")
             fail(DictationError.silentMicrophone.localizedDescription)
             return
         }
