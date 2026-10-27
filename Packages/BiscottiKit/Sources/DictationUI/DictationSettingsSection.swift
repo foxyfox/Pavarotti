@@ -3,7 +3,7 @@ import DesignSystem
 import Dictation
 import SwiftUI
 
-/// The Dictation part of Settings: shortcut, language, model, Accessibility access,
+/// The Dictation part of Settings: shortcut, language, microphone, model, Accessibility access,
 /// sounds, audio ducking, the dictionary and the import from TypeWhisper.
 public struct DictationSettingsSection: View {
     let controller: DictationController
@@ -31,6 +31,7 @@ public struct DictationSettingsSection: View {
                     Text("German").tag(TranscriptionLanguage.german)
                     Text("English").tag(TranscriptionLanguage.english)
                 }
+                microphoneRows
                 modelRows
                 accessibilityRow
                 VStack(alignment: .leading, spacing: Tokens.spacingXS) {
@@ -52,6 +53,7 @@ public struct DictationSettingsSection: View {
         }
         .onAppear {
             controller.refreshAccessibility()
+            controller.refreshMicrophones()
             controller.refreshCustomSounds()
         }
 

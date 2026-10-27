@@ -4,6 +4,9 @@ import Foundation
 /// Errors dictation reports to the user.
 public enum DictationError: Error, Equatable, LocalizedError {
     case microphoneUnavailable(String)
+    case microphoneDenied
+    case silentMicrophone
+    case nothingHeard
     case modelNotInstalled
     case unknownModel(String)
     case unsupportedSoundFile(String)
@@ -12,6 +15,12 @@ public enum DictationError: Error, Equatable, LocalizedError {
         switch self {
         case let .microphoneUnavailable(reason):
             "The microphone could not be started. \(reason)"
+        case .microphoneDenied:
+            "Pavarotti may not use the microphone. Allow it in System Settings \u{2192} Privacy & Security \u{2192} Microphone."
+        case .silentMicrophone:
+            "The microphone recorded only silence. Choose another one in Settings \u{2192} Dictation."
+        case .nothingHeard:
+            "Nothing was heard. Check the microphone in Settings \u{2192} Dictation."
         case .modelNotInstalled:
             "Install the Cohere model in Settings \u{2192} Dictation first."
         case let .unknownModel(id):
@@ -24,9 +33,10 @@ public enum DictationError: Error, Equatable, LocalizedError {
 
 /// Records the microphone for one dictation.
 public protocol DictationAudioSource: AnyObject {
-    /// Starts recording. `onFirstAudio` runs once, on any thread, when audio arrives,
-    /// which is the moment the microphone is really listening.
-    func start(onFirstAudio: @escaping @Sendable () -> Void) throws
+    /// Starts recording from the input device with the Core Audio UID `microphoneID`, or from
+    /// the system default when it is `nil` or not connected. `onFirstAudio` runs once, on any
+    /// thread, when audio arrives, which is the moment the microphone is really listening.
+    func start(microphoneID: String?, onFirstAudio: @escaping @Sendable () -> Void) throws
     /// Stops recording and returns mono samples at ``DictationAudio/sampleRate``.
     func stop() -> [Float]
     /// Stops recording and drops the audio.
@@ -37,6 +47,15 @@ public protocol DictationAudioSource: AnyObject {
 public enum DictationAudio {
     /// Cohere Transcribe works on 16 kHz audio.
     public static let sampleRate = 16000
+    /// Peak level below which a recording counts as silence (-100 dBFS). A blocked or
+    /// switched-off microphone, like a MacBook's with the lid closed, records zeros instead
+    /// of failing; a working one is never this quiet.
+    public static let silenceThreshold: Float = 0.000_01
+
+    /// Whether `samples` hold nothing but silence.
+    public static func isSilent(_ samples: [Float]) -> Bool {
+        !samples.contains { abs($0) >= silenceThreshold }
+    }
 }
 
 /// Turns recorded samples into text.
@@ -117,6 +136,7 @@ public struct DictationDependencies {
     public var soundLibrary: SoundLibrary
     public var dictionary: PersonalDictionary
     public var corrections: any CorrectionWatching
+    public var microphones: any MicrophoneProviding
 
     public init(
         audio: any DictationAudioSource,
@@ -127,7 +147,8 @@ public struct DictationDependencies {
         accessibility: any AccessibilityTrust,
         soundLibrary: SoundLibrary,
         dictionary: PersonalDictionary,
-        corrections: any CorrectionWatching
+        corrections: any CorrectionWatching,
+        microphones: any MicrophoneProviding
     ) {
         self.audio = audio
         self.engine = engine
@@ -138,5 +159,6 @@ public struct DictationDependencies {
         self.soundLibrary = soundLibrary
         self.dictionary = dictionary
         self.corrections = corrections
+        self.microphones = microphones
     }
 }

@@ -9,13 +9,16 @@ final class FakeAudioSource: DictationAudioSource {
     var startError: (any Error)?
     private(set) var startCount = 0
     private(set) var cancelCount = 0
+    /// The microphone each start asked for, `nil` for the system default.
+    private(set) var microphoneIDs: [String?] = []
     private var onFirstAudio: (@Sendable () -> Void)?
 
-    func start(onFirstAudio: @escaping @Sendable () -> Void) throws {
+    func start(microphoneID: String?, onFirstAudio: @escaping @Sendable () -> Void) throws {
         if let startError {
             throw startError
         }
         startCount += 1
+        microphoneIDs.append(microphoneID)
         self.onFirstAudio = onFirstAudio
     }
 
@@ -34,7 +37,14 @@ final class FakeAudioSource: DictationAudioSource {
         onFirstAudio?()
     }
 
-    /// `seconds` of silence at the dictation sample rate.
+    /// `seconds` of quiet sound at the dictation sample rate.
+    static func speech(seconds: Double) -> [Float] {
+        (0 ..< Int(seconds * Double(DictationAudio.sampleRate))).map { index in
+            0.05 * sin(Float(index) * 0.1)
+        }
+    }
+
+    /// `seconds` of digital silence, as a blocked or switched-off microphone records it.
     static func silence(seconds: Double) -> [Float] {
         Array(repeating: 0, count: Int(seconds * Double(DictationAudio.sampleRate)))
     }
@@ -177,6 +187,33 @@ final class FakeCorrectionWatcher: CorrectionWatching {
     }
 }
 
+/// Two microphones and a permission the test sets.
+@MainActor
+final class FakeMicrophones: MicrophoneProviding {
+    static let builtIn = MicrophoneDevice(id: "BuiltInMicrophoneDevice", name: "MacBook Pro Microphone")
+    static let display = MicrophoneDevice(id: "AppleUSBAudioEngine:Apple Inc.:Studio Display", name: "Studio Display Microphone")
+
+    var permission = MicrophonePermission.granted
+    /// What the system prompt answers.
+    var grantsOnRequest = true
+    var connected = [builtIn, display]
+    private(set) var requestCount = 0
+
+    func requestPermission() async -> Bool {
+        requestCount += 1
+        permission = grantsOnRequest ? .granted : .denied
+        return grantsOnRequest
+    }
+
+    func devices() -> [MicrophoneDevice] {
+        connected
+    }
+
+    func defaultDevice() -> MicrophoneDevice? {
+        connected.first
+    }
+}
+
 @MainActor
 final class TestClock {
     var now: TimeInterval = 0
@@ -196,6 +233,7 @@ final class DictationHarness {
     let sounds = FakeSounds()
     let ducker = FakeDucker()
     let accessibility = FakeAccessibility()
+    let microphones = FakeMicrophones()
     let clock = TestClock()
     let dictionary = PersonalDictionary(fileURL: nil)
     let corrections = FakeCorrectionWatcher()
@@ -221,7 +259,8 @@ final class DictationHarness {
             accessibility: accessibility,
             soundLibrary: SoundLibrary(directory: soundFolder),
             dictionary: dictionary,
-            corrections: corrections
+            corrections: corrections,
+            microphones: microphones
         )
         let clock = clock
         controller = DictationController(store: store, dependencies: dependencies) { clock.now }

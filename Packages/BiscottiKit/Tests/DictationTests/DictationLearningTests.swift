@@ -8,7 +8,7 @@ struct DictationLearningTests {
     /// Runs one dictation of "Hallo Welt" through the harness.
     private func dictate(with harness: DictationHarness) async -> Bool {
         guard await harness.startListening() else { return false }
-        harness.audio.samples = FakeAudioSource.silence(seconds: 1)
+        harness.audio.samples = FakeAudioSource.speech(seconds: 1)
         harness.controller.stop()
         await harness.controller.waitForWork()
         return true

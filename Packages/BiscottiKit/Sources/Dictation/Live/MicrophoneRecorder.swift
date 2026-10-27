@@ -1,12 +1,18 @@
+import AudioToolbox
 @preconcurrency import AVFoundation
+import CoreAudio
 import Foundation
+import os
 import Synchronization
 
-/// Records the default microphone into memory for one dictation.
+/// Records a microphone into memory for one dictation.
 ///
-/// A fresh `AVAudioEngine` per dictation follows the current default input device.
-/// The tap mixes to mono at the device rate; ``stop()`` resamples once to 16 kHz.
+/// A fresh `AVAudioEngine` per dictation follows the current default input device, unless
+/// a connected device is chosen. The tap mixes to mono at the device rate; ``stop()``
+/// resamples once to 16 kHz.
 public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable {
+    private static let logger = Logger(subsystem: "de.foxagon.pavarotti", category: "Dictation")
+
     private struct Capture {
         var samples: [Float] = []
         var sampleRate: Double = 0
@@ -20,10 +26,13 @@ public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable
 
     public init() {}
 
-    public func start(onFirstAudio: @escaping @Sendable () -> Void) throws {
+    public func start(microphoneID: String?, onFirstAudio: @escaping @Sendable () -> Void) throws {
         finishCapture()
         let engine = AVAudioEngine()
         let input = engine.inputNode
+        if let microphoneID {
+            Self.select(microphoneID, on: input)
+        }
         let format = input.outputFormat(forBus: 0)
         let sampleRate = format.sampleRate
         guard sampleRate > 0, format.channelCount > 0 else {
@@ -59,6 +68,28 @@ public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable
     }
 
     // MARK: - Private
+
+    /// Points the input node at the device with the UID `uid`, before its format is read.
+    /// Keeps the system default when the device is not connected or refuses.
+    private static func select(_ uid: String, on input: AVAudioInputNode) {
+        guard let device = CoreAudioInputDevices.device(withUID: uid) else {
+            logger.warning("Microphone \(uid, privacy: .public) is not connected; recording from the system default")
+            return
+        }
+        guard let unit = input.audioUnit else { return }
+        var objectID = device.objectID
+        let status = AudioUnitSetProperty(
+            unit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
+            0,
+            &objectID,
+            UInt32(MemoryLayout<AudioObjectID>.size)
+        )
+        if status != noErr {
+            logger.error("Could not record from \(device.device.name, privacy: .public) (\(status)); recording from the system default")
+        }
+    }
 
     @discardableResult
     private func finishCapture() -> Capture {
