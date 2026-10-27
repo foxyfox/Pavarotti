@@ -84,10 +84,10 @@ public final class CorrectionWatcher: CorrectionWatching {
             self?.finish()
         }
         let interval = pollInterval
-        let timeout = timeout
+        let limit = timeout
         pollTask = Task { [weak self] in
             var waited = Duration.zero
-            while waited < timeout {
+            while waited < limit {
                 try? await Task.sleep(for: interval)
                 waited += interval
                 guard !Task.isCancelled, let self, poll() else { return }

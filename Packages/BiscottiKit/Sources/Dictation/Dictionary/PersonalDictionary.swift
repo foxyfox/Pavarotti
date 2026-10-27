@@ -32,7 +32,7 @@ public final class PersonalDictionary {
     }
 
     public private(set) var entries: [DictionaryEntry] = []
-    @ObservationIgnored private let fileURL: URL?
+    private let fileURL: URL?
 
     private static let logger = Logger(subsystem: "de.foxagon.pavarotti", category: "Dictionary")
 

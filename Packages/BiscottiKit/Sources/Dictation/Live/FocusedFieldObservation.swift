@@ -32,7 +32,7 @@ public final class AccessibilityFocusedTextReader: FocusedTextReading {
 
     private static func element(_ element: AXUIElement, _ name: String) -> AXUIElement? {
         guard let value = attribute(element, name), CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
-        return unsafeBitCast(value, to: AXUIElement.self)
+        return unsafeDowncast(value, to: AXUIElement.self)
     }
 
     private static func string(_ element: AXUIElement, _ name: String) -> String? {
