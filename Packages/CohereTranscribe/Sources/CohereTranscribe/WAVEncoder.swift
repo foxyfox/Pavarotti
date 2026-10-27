@@ -20,16 +20,18 @@ public enum WAVEncoder {
         data.appendLittleEndian(UInt16(16))
         data.append(Data("data".utf8))
         data.appendLittleEndian(UInt32(dataSize))
-        for sample in samples {
-            let clamped = max(-1, min(1, sample))
-            data.appendLittleEndian(Int16(clamped * Float(Int16.max)))
+        let pcm = samples.map { sample -> Int16 in
+            let clamped = sample.isFinite ? max(-1, min(1, sample)) : 0
+            return Int16(clamped * Float(Int16.max)).littleEndian
         }
+        pcm.withUnsafeBytes { data.append(contentsOf: $0) }
         return data
     }
 }
 
 private extension Data {
     mutating func appendLittleEndian(_ value: some FixedWidthInteger) {
-        withUnsafeBytes(of: value.littleEndian) { append(contentsOf: $0) }
+        // Qualified: inside a Data extension the bare name finds Data's own method.
+        Swift.withUnsafeBytes(of: value.littleEndian) { append(contentsOf: $0) }
     }
 }
