@@ -34,6 +34,8 @@ private let referenceDate: Date = {
 private let utcCalendar: Calendar = {
     var cal = Calendar(identifier: .gregorian)
     cal.timeZone = .gmt
+    // English month names, also on a Mac set to another language.
+    cal.locale = Locale(identifier: "en_US_POSIX")
     return cal
 }()
 

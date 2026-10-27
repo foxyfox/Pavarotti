@@ -269,6 +269,7 @@ public final class MeetingListViewModel {
 
         let monthFormatter = DateFormatter()
         monthFormatter.calendar = calendar
+        monthFormatter.locale = calendar.locale ?? .current
         for month in partition.monthBuckets.keys.sorted(by: >) {
             let name = monthFormatter.standaloneMonthSymbols[month - 1]
             appendIfNonEmpty(

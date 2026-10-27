@@ -515,7 +515,9 @@ struct HomeViewModelGreetingTests {
         let date = try #require(Foundation.Calendar.current.date(from: components))
         fix.core.setMinuteTick(date)
 
-        #expect(viewModel.dateText == "Friday, June 12")
+        // Weekday and month follow the Mac's language ("Friday, June 12" in English).
+        let symbols = DateFormatter()
+        #expect(viewModel.dateText == "\(symbols.weekdaySymbols[5]), \(symbols.monthSymbols[5]) 12")
     }
 }
 
