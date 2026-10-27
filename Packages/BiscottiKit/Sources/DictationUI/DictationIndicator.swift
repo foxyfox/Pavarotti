@@ -3,10 +3,10 @@ import Dictation
 import Observation
 import SwiftUI
 
-/// The recording bubble: a dark bubble at the bottom of the screen with the active window
-/// that shows a live waveform while dictation listens, then "Transcribing", a failure, or
-/// briefly what the dictionary learned. It never takes focus or clicks, and screen sharing
-/// does not show it.
+/// The recording bubble: a small pill at the bottom or top of the screen with the active
+/// window that shows a live waveform while dictation listens, then "Transcribing", a
+/// failure, or briefly what the dictionary learned. Its size, look and position come from
+/// Settings. It never takes focus or clicks, and screen sharing does not show it.
 @MainActor
 public final class DictationIndicator {
     private let controller: DictationController
@@ -20,6 +20,8 @@ public final class DictationIndicator {
     private static let size = NSSize(width: 480, height: 120)
     /// Distance from the bottom of the screen's visible area.
     private static let bottomMargin: CGFloat = 28
+    /// Distance from the top of the screen's visible area, below the menu bar.
+    private static let topMargin: CGFloat = 2
     /// How often the waveform reads the microphone level.
     private static let meterInterval = Duration.milliseconds(50)
     /// Time for the bubble to fade out before the panel goes away.
@@ -83,7 +85,10 @@ public final class DictationIndicator {
         // Placed when it appears, so it does not jump while you talk.
         let screen = FrontmostWindowScreen.ofFrontmostApplication() ?? Self.screenWithMouse() ?? NSScreen.main
         if let frame = screen?.visibleFrame {
-            panel.setFrameOrigin(NSPoint(x: frame.midX - Self.size.width / 2, y: frame.minY + Self.bottomMargin))
+            let originY = controller.settings.bubble.position == .top
+                ? frame.maxY - Self.topMargin - Self.size.height
+                : frame.minY + Self.bottomMargin
+            panel.setFrameOrigin(NSPoint(x: frame.midX - Self.size.width / 2, y: originY))
         }
         panel.orderFrontRegardless()
     }

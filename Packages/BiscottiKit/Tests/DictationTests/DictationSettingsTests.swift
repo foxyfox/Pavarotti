@@ -16,6 +16,7 @@ struct DictationSettingsTests {
         #expect(settings.startSound == .system("Tink"))
         #expect(!settings.ducksAudio)
         #expect(settings.restoresClipboard)
+        #expect(settings.bubble == BubbleAppearance(size: .compact, style: .glass, position: .bottom))
     }
 
     @Test("round trip through JSON")
@@ -30,6 +31,7 @@ struct DictationSettingsTests {
         settings.duckingLevel = 0.35
         settings.learnsFromCorrections = false
         settings.microphone = MicrophoneDevice(id: "AppleUSBAudioEngine:Apple Inc.:Studio Display", name: "Studio Display Microphone")
+        settings.bubble = BubbleAppearance(size: .minimal, style: .frosted, position: .top)
         let data = try JSONEncoder().encode(settings)
         let decoded = try JSONDecoder().decode(DictationSettings.self, from: data)
         #expect(decoded == settings)
@@ -44,6 +46,20 @@ struct DictationSettingsTests {
         expected.duckingLevel = 0.5
         #expect(decoded == expected)
         #expect(decoded.microphone == nil)
+    }
+
+    @Test("settings saved before the bubble choices get the small glass bubble")
+    func bubbleDefaultsForOlderSettings() throws {
+        let json = Data(#"{"isEnabled": true, "mode": "hybrid"}"#.utf8)
+        let decoded = try JSONDecoder().decode(DictationSettings.self, from: json)
+        #expect(decoded.bubble == BubbleAppearance())
+    }
+
+    @Test("an unknown bubble choice keeps the other two")
+    func tolerantBubbleDecoding() throws {
+        let json = Data(#"{"bubble": {"size": "minimal", "style": "chrome", "position": "top"}}"#.utf8)
+        let decoded = try JSONDecoder().decode(DictationSettings.self, from: json)
+        #expect(decoded.bubble == BubbleAppearance(size: .minimal, style: .glass, position: .top))
     }
 
     @Test("the store saves and loads, and falls back to defaults")
