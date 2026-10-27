@@ -61,14 +61,7 @@ public extension AppCore {
         let calendar = CalendarService(store: store, catalog: catalog)
 
         logger.info("AppCore.live: MeetingDetector init")
-        // Exclude our own mic use by the running bundle ID, which differs
-        // from upstream Biscotti's in the Pavarotti fork.
-        let detector = MeetingDetector(
-            catalog: catalog,
-            source: LiveActivitySource(),
-            clock: AnyClock(ContinuousClock()),
-            selfBundlePrefix: Bundle.main.bundleIdentifier ?? "de.foxagon.pavarotti"
-        )
+        let detector = buildDetector(catalog: catalog)
 
         logger.info("AppCore.live: NotificationService init")
         let notifications = NotificationService()
@@ -127,6 +120,18 @@ public extension AppCore {
             }
         )
         return (modelManager, intelligence)
+    }
+
+    /// Builds the live `MeetingDetector`. Our own mic use is excluded by the
+    /// running bundle ID, which differs from upstream Biscotti's in the
+    /// Pavarotti fork.
+    private static func buildDetector(catalog: BundledMeetingCatalog) -> MeetingDetector {
+        MeetingDetector(
+            catalog: catalog,
+            source: LiveActivitySource(),
+            clock: AnyClock(ContinuousClock()),
+            selfBundlePrefix: Bundle.main.bundleIdentifier ?? "de.foxagon.pavarotti"
+        )
     }
 
     /// Builds the live `TranscriptionService` with XPC engine and vocabulary.
