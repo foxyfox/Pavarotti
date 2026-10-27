@@ -2,6 +2,7 @@ import AppKit
 import AppLinks
 import Calendar
 import DataStore
+import Dictation
 import Foundation
 import Intelligence
 import MCPServer
@@ -157,7 +158,7 @@ public struct AutoStopState: Sendable, Equatable {
 /// auto-association, detection -> notification -> record flow,
 /// calendar-start timers, auto-stop countdown).
 @MainActor @Observable
-public final class AppCore {
+public final class AppCore { // swiftlint:disable:this type_body_length
     // MARK: - Published state
 
     /// The current navigation destination.
@@ -294,6 +295,10 @@ public final class AppCore {
     /// Local MCP server lifecycle (loopback HTTP, read-only meeting tools).
     /// Only starts when the user enables it in Settings.
     public let mcpServer: MCPServerController
+
+    /// Pavarotti: push-to-talk dictation. Set by the app at launch; `nil` in tests
+    /// and previews, where Settings then leaves the dictation section out.
+    public var dictation: DictationController?
 
     // MARK: - Private
 

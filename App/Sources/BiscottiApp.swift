@@ -3,6 +3,8 @@ import AppLinks
 import AppShellUI
 import Carbon
 import DesignSystem
+import Dictation
+import DictationUI
 import MenuBarUI
 import Notifications
 import os
@@ -270,6 +272,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate,
     /// the hotkey is registered; nil when unregistered or not yet built.
     private var globalRecordHotKey: GlobalHotKey?
 
+    /// Pavarotti: push-to-talk dictation and its on-screen indicator, kept
+    /// alive for the app's lifetime (see `AppDelegate+Dictation.swift`).
+    var dictation: DictationRuntime?
+    var dictationIndicator: DictationIndicator?
+
     /// Observable state read by `BiscottiApp.body`. Mutations here
     /// trigger SwiftUI re-renders (fixes the startup-hang race).
     let launchState = LaunchState()
@@ -450,6 +457,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate,
 
             // Register the global ⌘⇧R hotkey if the setting is ON.
             loadGlobalRecordShortcutSetting(from: appCore)
+
+            startDictation(on: appCore)
         } catch {
             logger.error("buildCore: FAILED — \(error)")
             launchState.launchError = error.localizedDescription
