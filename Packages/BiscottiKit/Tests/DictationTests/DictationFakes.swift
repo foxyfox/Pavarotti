@@ -234,6 +234,7 @@ final class DictationHarness {
     let ducker = FakeDucker()
     let accessibility = FakeAccessibility()
     let microphones = FakeMicrophones()
+    let history = DictationHistory(fileURL: nil)
     let clock = TestClock()
     let dictionary = PersonalDictionary(fileURL: nil)
     let corrections = FakeCorrectionWatcher()
@@ -260,7 +261,8 @@ final class DictationHarness {
             soundLibrary: SoundLibrary(directory: soundFolder),
             dictionary: dictionary,
             corrections: corrections,
-            microphones: microphones
+            microphones: microphones,
+            history: history
         )
         let clock = clock
         controller = DictationController(store: store, dependencies: dependencies) { clock.now }

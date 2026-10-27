@@ -2,6 +2,7 @@ import AppCore
 import Calendar
 import DataStore
 import DesignSystem
+import DictationUI
 import SwiftUI
 
 /// The native-menu body content of the `MenuBarExtra`.
@@ -19,6 +20,11 @@ public struct MenuBarContentView: View {
     public var body: some View {
         // Recording section
         recordingSection
+
+        // Pavarotti: the last dictations, to copy one that was not pasted.
+        if let dictation = viewModel.dictation {
+            RecentDictationsMenu(controller: dictation)
+        }
 
         Divider()
 

@@ -476,6 +476,8 @@ let package = Package(
                 "Calendar",
                 "DataStore",
                 "DesignSystem",
+                "Dictation",
+                "DictationUI",
                 "Formatting"
             ],
             swiftSettings: warningsAsErrors

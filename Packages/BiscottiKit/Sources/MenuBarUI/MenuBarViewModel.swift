@@ -3,6 +3,7 @@ import AppKit
 import Calendar
 import DataStore
 import DesignSystem
+import Dictation
 import Formatting
 import Foundation
 
@@ -71,6 +72,11 @@ public final class MenuBarViewModel {
     }
 
     // MARK: - Body state
+
+    /// Pavarotti: dictation, for the recent dictations. `nil` in tests and previews.
+    public var dictation: DictationController? {
+        core.dictation
+    }
 
     /// Whether a recording is in progress.
     public var isRecording: Bool {
