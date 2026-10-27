@@ -9,7 +9,7 @@ public struct BrandFooter: View {
         VStack(spacing: 3) {
             BrandMark()
 
-            Text("Biscotti")
+            Text("Pavarotti")
                 .font(.system(size: 13, weight: .semibold))
                 .tracking(-0.1)
                 .foregroundStyle(.ink)
