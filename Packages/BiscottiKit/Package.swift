@@ -38,6 +38,7 @@ let package = Package(
         .library(name: "VoiceprintMatching", targets: ["VoiceprintMatching"]),
         .library(name: "Dictation", targets: ["Dictation"]),
         .library(name: "DictationUI", targets: ["DictationUI"]),
+        .library(name: "MeetingNotes", targets: ["MeetingNotes"]),
         .executable(name: "voiceprint-cli", targets: ["voiceprint-cli"])
     ],
     dependencies: [
@@ -191,6 +192,7 @@ let package = Package(
                 "ImportExport",
                 "Intelligence",
                 "MCPServer",
+                "MeetingNotes",
                 "Permissions",
                 "Recording",
                 "TranscriptionService",
@@ -452,6 +454,7 @@ let package = Package(
                 "Intelligence",
                 "LocalLLM",
                 "MCPServer",
+                "MeetingNotes",
                 "ModelManagementUI",
                 "Permissions",
                 "SummaryPromptUI",
@@ -687,6 +690,17 @@ let package = Package(
         .testTarget(
             name: "VocabularyTests",
             dependencies: ["Vocabulary", "DataStore"],
+            swiftSettings: warningsAsErrors
+        ),
+        // Pavarotti: Markdown meeting notes in the TypeWhisper fork's format.
+        .target(
+            name: "MeetingNotes",
+            dependencies: ["DataStore"],
+            swiftSettings: warningsAsErrors
+        ),
+        .testTarget(
+            name: "MeetingNotesTests",
+            dependencies: ["MeetingNotes", "DataStore"],
             swiftSettings: warningsAsErrors
         ),
         .target(

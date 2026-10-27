@@ -254,6 +254,20 @@ public enum IntelligencePrompts {
         return parts.joined(separator: "\n\n")
     }
 
+    // MARK: - Language (Pavarotti)
+
+    /// Pavarotti: the instructions are English, but notes and titles of a German meeting
+    /// must be German.
+    public static let languageRule = """
+    Write your answer in the language spoken most in the transcript, even though these \
+    instructions are in English.
+    """
+
+    /// `turn` with ``languageRule`` as its last paragraph.
+    public static func withLanguageRule(_ turn: String) -> String {
+        turn + "\n\n" + languageRule
+    }
+
     // MARK: - Private helpers
 
     private static func dateLines(

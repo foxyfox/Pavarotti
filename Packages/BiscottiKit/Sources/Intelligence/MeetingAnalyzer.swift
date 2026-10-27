@@ -132,9 +132,9 @@ enum MeetingAnalyzer {
         if priorTurnRan {
             // Transcript is already in context; just add the summary task
             messages.append(
-                .user(IntelligencePrompts.summaryFollowUpUser(
+                .user(IntelligencePrompts.withLanguageRule(IntelligencePrompts.summaryFollowUpUser(
                     summaryInstructions: ctx.summaryInstructions
-                ))
+                )))
             )
         } else {
             // No prior turn -- build the summary-only first user turn
@@ -146,7 +146,7 @@ enum MeetingAnalyzer {
                 detail: ctx.detail, transcriptNamed: transcript,
                 summaryInstructions: ctx.summaryInstructions
             )
-            messages.append(.user(userContent))
+            messages.append(.user(IntelligencePrompts.withLanguageRule(userContent)))
         }
 
         ctx.onStage(.summarizing)
@@ -190,7 +190,7 @@ enum MeetingAnalyzer {
         if priorTurnRan {
             // Transcript is already in context; just add the title task
             messages.append(
-                .user(IntelligencePrompts.titleFollowUpUser)
+                .user(IntelligencePrompts.withLanguageRule(IntelligencePrompts.titleFollowUpUser))
             )
         } else {
             // No prior turn -- build the title-only first user turn
@@ -201,7 +201,7 @@ enum MeetingAnalyzer {
             let userContent = IntelligencePrompts.titleOnlyFirstUser(
                 detail: ctx.detail, transcriptNamed: transcript
             )
-            messages.append(.user(userContent))
+            messages.append(.user(IntelligencePrompts.withLanguageRule(userContent)))
         }
 
         ctx.onStage(.generatingTitle)

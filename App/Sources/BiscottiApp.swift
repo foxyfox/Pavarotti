@@ -462,6 +462,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate,
             loadGlobalRecordShortcutSetting(from: appCore)
 
             startDictation(on: appCore)
+            // Pavarotti: Markdown notes like the TypeWhisper fork's.
+            Task { await appCore.startMeetingNotes() }
         } catch {
             logger.error("buildCore: FAILED — \(error)")
             launchState.launchError = error.localizedDescription

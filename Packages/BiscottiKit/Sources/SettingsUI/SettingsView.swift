@@ -80,6 +80,7 @@ public struct SettingsView: View {
                     permissionsSection
                     notificationsSection
                     aiEnhancementsSection
+                    MeetingNotesSettingsSection(appCore: viewModel.appCore)
                     customVocabularySection
                     importExportSection
                     calendarSection

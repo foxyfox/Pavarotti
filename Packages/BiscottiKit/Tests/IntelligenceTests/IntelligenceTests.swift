@@ -1943,7 +1943,7 @@ struct SummaryPromptOrchestrationTests {
         let summaryMsgs = session.streamingCalls[0]
         // The follow-up user turn is the last user message
         let followUp = summaryMsgs.last { $0.role == .user }?.content ?? ""
-        #expect(followUp == customPrompt)
+        #expect(followUp == IntelligencePrompts.withLanguageRule(customPrompt))
     }
 
     @Test("runAnalysis with override in multi-turn threads override to follow-up")
@@ -1969,7 +1969,7 @@ struct SummaryPromptOrchestrationTests {
         #expect(session.streamingCalls.count == 1)
         let summaryMsgs = session.streamingCalls[0]
         let followUp = summaryMsgs.last { $0.role == .user }?.content ?? ""
-        #expect(followUp == customPrompt)
+        #expect(followUp == IntelligencePrompts.withLanguageRule(customPrompt))
         #expect(!followUp.contains("## Action Items"))
     }
 }
