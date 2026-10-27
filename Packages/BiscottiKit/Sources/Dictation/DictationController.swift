@@ -240,20 +240,32 @@ public final class DictationController {
             lastTranscript = text
             // Kept before pasting, so text that does not arrive can be copied again.
             dependencies.history.record(text)
-            switch await dependencies.inserter.insert(text, restoringClipboard: snapshot.restoresClipboard) {
-            case .pasted:
-                playCue(snapshot.doneSound)
-                phase = .idle
-                if snapshot.learnsFromCorrections {
-                    watchForCorrections(after: text)
-                }
-            case .copiedOnly:
-                fail("Copied to the clipboard. Allow Accessibility access so Pavarotti can paste for you.")
-            }
+            let result = await dependencies.inserter.insert(text, restoringClipboard: snapshot.restoresClipboard)
+            finish(result, text: text, snapshot: snapshot, session: started)
         } catch {
             guard started == session, !(error is CancellationError) else { return }
             Self.logger.error("Dictation failed: \(error.localizedDescription, privacy: .public)")
             fail(error.localizedDescription)
+        }
+    }
+
+    private func finish(_ result: TextInsertionResult, text: String, snapshot: DictationSettings, session started: Int) {
+        switch result {
+        case .pasted:
+            playCue(snapshot.doneSound)
+            phase = .idle
+            if snapshot.learnsFromCorrections {
+                watchForCorrections(after: text)
+            }
+        case .copiedOnly:
+            fail("Copied to the clipboard. Allow Accessibility access so Pavarotti can paste for you.")
+        case let .notPasted(reason):
+            if let message = reason.message {
+                fail(message)
+            } else if started == session {
+                // Cancelled during the clipboard sync.
+                phase = .idle
+            }
         }
     }
 
