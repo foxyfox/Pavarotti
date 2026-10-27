@@ -70,6 +70,9 @@ final class FakeEngine: DictationTranscribing {
         var shutdownCount = 0
         /// Per model; others download 1 MB and are not in TypeWhisper.
         var plans: [String: DictationInstallPlan] = [:]
+        /// Answers of `transcribeTimed`, in order. Once used up, the text becomes one
+        /// passage over the whole audio.
+        var timed: [TimedTranscription] = []
     }
 
     let state = Mutex(State())
@@ -110,6 +113,23 @@ final class FakeEngine: DictationTranscribing {
             return .success(current.text)
         }
         return try outcome.get()
+    }
+
+    func transcribeTimed(
+        samples: [Float],
+        sampleRate: Int,
+        language: TranscriptionLanguage,
+        modelID: String
+    ) async throws -> TimedTranscription {
+        let text = try await transcribe(samples: samples, sampleRate: sampleRate, language: language, modelID: modelID)
+        let next = state.withLock { current -> TimedTranscription? in
+            current.timed.isEmpty ? nil : current.timed.removeFirst()
+        }
+        if let next {
+            return next
+        }
+        let end = Double(samples.count) / Double(sampleRate)
+        return TimedTranscription(language: nil, passages: [TimedText(start: 0, end: end, text: text)])
     }
 
     func shutdown() async {

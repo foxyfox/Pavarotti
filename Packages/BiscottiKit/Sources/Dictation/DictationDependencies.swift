@@ -90,8 +90,56 @@ public protocol DictationTranscribing: Sendable {
         language: TranscriptionLanguage,
         modelID: String
     ) async throws -> String
+    /// Transcribes with the time of each passage, for files. The default makes the whole
+    /// text one passage.
+    func transcribeTimed(
+        samples: [Float],
+        sampleRate: Int,
+        language: TranscriptionLanguage,
+        modelID: String
+    ) async throws -> TimedTranscription
     /// Unloads the model.
     func shutdown() async
+}
+
+public extension DictationTranscribing {
+    func transcribeTimed(
+        samples: [Float],
+        sampleRate: Int,
+        language: TranscriptionLanguage,
+        modelID: String
+    ) async throws -> TimedTranscription {
+        let text = try await transcribe(samples: samples, sampleRate: sampleRate, language: language, modelID: modelID)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return TimedTranscription(language: nil, passages: []) }
+        let end = Double(samples.count) / Double(sampleRate)
+        return TimedTranscription(language: nil, passages: [TimedText(start: 0, end: end, text: text)])
+    }
+}
+
+/// A transcription with the time of each passage.
+public struct TimedTranscription: Equatable, Sendable {
+    /// ISO 639-1 code of the text, `nil` when the engine does not say.
+    public var language: String?
+    public var passages: [TimedText]
+
+    public init(language: String?, passages: [TimedText]) {
+        self.language = language
+        self.passages = passages
+    }
+}
+
+/// One stretch of speech, in seconds from the start of the audio.
+public struct TimedText: Equatable, Sendable {
+    public var start: TimeInterval
+    public var end: TimeInterval
+    public var text: String
+
+    public init(start: TimeInterval, end: TimeInterval, text: String) {
+        self.start = start
+        self.end = end
+        self.text = text
+    }
 }
 
 /// What installing a model still takes, for the setup and Settings.
