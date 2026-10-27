@@ -29,6 +29,7 @@ struct DictationSettingsTests {
         settings.ducksAudio = true
         settings.duckingLevel = 0.35
         settings.learnsFromCorrections = false
+        settings.microphone = MicrophoneDevice(id: "AppleUSBAudioEngine:Apple Inc.:Studio Display", name: "Studio Display Microphone")
         let data = try JSONEncoder().encode(settings)
         let decoded = try JSONDecoder().decode(DictationSettings.self, from: data)
         #expect(decoded == settings)
@@ -42,6 +43,7 @@ struct DictationSettingsTests {
         expected.mode = .toggle
         expected.duckingLevel = 0.5
         #expect(decoded == expected)
+        #expect(decoded.microphone == nil)
     }
 
     @Test("the store saves and loads, and falls back to defaults")

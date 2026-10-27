@@ -38,6 +38,8 @@ public struct DictationSettings: Codable, Equatable, Sendable {
     public var restoresClipboard = true
     /// Adds words the user fixes after pasting to the dictionary.
     public var learnsFromCorrections = true
+    /// The input device to record from. `nil` follows the system's default input.
+    public var microphone: MicrophoneDevice?
 
     public init() {}
 
@@ -59,6 +61,7 @@ public struct DictationSettings: Codable, Equatable, Sendable {
         duckingLevel = container.value(.duckingLevel, default: defaults.duckingLevel)
         restoresClipboard = container.value(.restoresClipboard, default: defaults.restoresClipboard)
         learnsFromCorrections = container.value(.learnsFromCorrections, default: defaults.learnsFromCorrections)
+        microphone = container.value(.microphone, default: defaults.microphone)
     }
 }
 

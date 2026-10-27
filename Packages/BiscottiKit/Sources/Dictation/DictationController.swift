@@ -39,6 +39,10 @@ public final class DictationController {
     public private(set) var isAccessibilityTrusted = false
     public private(set) var lastTranscript: String?
     public private(set) var customSounds: [String] = []
+    /// The connected input devices, for the microphone picker. See ``refreshMicrophones()``.
+    public internal(set) var microphones: [MicrophoneDevice] = []
+    public internal(set) var defaultMicrophone: MicrophoneDevice?
+    public internal(set) var microphonePermission = MicrophonePermission.undecided
     /// A short message for the indicator, such as a word the dictionary just learned.
     public internal(set) var notice: String?
     /// While true, shortcut events are ignored (the settings are recording a new shortcut).
@@ -58,6 +62,7 @@ public final class DictationController {
     @ObservationIgnored private var failureTask: Task<Void, Never>?
     @ObservationIgnored var workTask: Task<Void, Never>?
     @ObservationIgnored private var engineTask: Task<Void, Never>?
+    @ObservationIgnored var microphoneRequest: Task<Void, Never>?
     @ObservationIgnored var noticeTask: Task<Void, Never>?
 
     private static let logger = Logger(subsystem: "de.foxagon.pavarotti", category: "Dictation")
@@ -119,10 +124,14 @@ public final class DictationController {
             fail(DictationError.modelNotInstalled.localizedDescription)
             return
         }
+        guard mayRecord() else {
+            gesture.reset()
+            return
+        }
         session += 1
         let current = session
         do {
-            try dependencies.audio.start { [weak self] in
+            try dependencies.audio.start(microphoneID: settings.microphone?.id) { [weak self] in
                 Task { @MainActor [weak self] in
                     self?.audioDidStart(session: current)
                 }
@@ -150,6 +159,11 @@ public final class DictationController {
         let seconds = Double(samples.count) / Double(DictationAudio.sampleRate)
         guard seconds >= Self.minimumDuration else {
             phase = .idle
+            return
+        }
+        guard !DictationAudio.isSilent(samples) else {
+            Self.logger.warning("The microphone recorded only silence (\(settings.microphone?.name ?? "system default", privacy: .public))")
+            fail(DictationError.silentMicrophone.localizedDescription)
             return
         }
         phase = .transcribing
@@ -219,7 +233,7 @@ public final class DictationController {
                 engineState = .ready
             }
             guard !heard.isEmpty else {
-                phase = .idle
+                fail(DictationError.nothingHeard.localizedDescription)
                 return
             }
             let text = dependencies.dictionary.apply(to: heard)
@@ -241,7 +255,7 @@ public final class DictationController {
         }
     }
 
-    private func fail(_ message: String) {
+    func fail(_ message: String) {
         phase = .failed(message)
         playCue(settings.errorSound)
         failureTask?.cancel()

@@ -25,7 +25,8 @@ public final class DictationRuntime {
             accessibility: trust,
             soundLibrary: library,
             dictionary: PersonalDictionary(fileURL: PersonalDictionary.standardFileURL),
-            corrections: CorrectionWatcher(reader: AccessibilityFocusedTextReader(), signals: CommitKeyMonitor())
+            corrections: CorrectionWatcher(reader: AccessibilityFocusedTextReader(), signals: CommitKeyMonitor()),
+            microphones: SystemMicrophones()
         )
         return DictationRuntime(controller: DictationController(store: DictationSettingsStore(), dependencies: dependencies))
     }

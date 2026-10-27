@@ -23,7 +23,7 @@ struct DictationControllerTests {
         #expect(harness.sounds.played == [.system("Tink")])
         #expect(await eventually { harness.ducker.levels == [0.25] })
 
-        harness.audio.samples = FakeAudioSource.silence(seconds: 1)
+        harness.audio.samples = FakeAudioSource.speech(seconds: 1)
         controller.stop()
         #expect(controller.phase == .transcribing)
         #expect(harness.ducker.restoreCount == 1)
@@ -62,7 +62,7 @@ struct DictationControllerTests {
         defer { harness.tearDown() }
 
         #expect(await harness.startListening())
-        harness.audio.samples = FakeAudioSource.silence(seconds: 1)
+        harness.audio.samples = FakeAudioSource.speech(seconds: 1)
         harness.controller.stop()
         await harness.controller.waitForWork()
 
@@ -79,7 +79,7 @@ struct DictationControllerTests {
         defer { harness.tearDown() }
 
         #expect(await harness.startListening())
-        harness.audio.samples = FakeAudioSource.silence(seconds: 0.1)
+        harness.audio.samples = FakeAudioSource.speech(seconds: 0.1)
         harness.controller.stop()
 
         #expect(harness.controller.phase == .idle)
@@ -120,7 +120,7 @@ struct DictationControllerTests {
         harness.engine.state.withLock { $0.error = error }
 
         #expect(await harness.startListening())
-        harness.audio.samples = FakeAudioSource.silence(seconds: 1)
+        harness.audio.samples = FakeAudioSource.speech(seconds: 1)
         harness.controller.stop()
         await harness.controller.waitForWork()
 
@@ -129,20 +129,20 @@ struct DictationControllerTests {
         #expect(harness.inserter.inserted.isEmpty)
     }
 
-    @Test("silence pastes nothing and plays no done cue")
+    @Test("an empty transcript pastes nothing and says nothing was heard")
     func emptyTextIsNotPasted() async {
         let harness = DictationHarness()
         defer { harness.tearDown() }
         harness.engine.state.withLock { $0.text = " \n " }
 
         #expect(await harness.startListening())
-        harness.audio.samples = FakeAudioSource.silence(seconds: 1)
+        harness.audio.samples = FakeAudioSource.speech(seconds: 1)
         harness.controller.stop()
         await harness.controller.waitForWork()
 
-        #expect(harness.controller.phase == .idle)
+        #expect(harness.controller.phase == .failed(DictationError.nothingHeard.localizedDescription))
         #expect(harness.inserter.inserted.isEmpty)
-        #expect(harness.sounds.played == [.system("Tink")])
+        #expect(harness.sounds.played == [.system("Tink"), .system("Basso")])
     }
 
     @Test("without Accessibility the text stays on the clipboard and the user is told")
@@ -152,7 +152,7 @@ struct DictationControllerTests {
         harness.inserter.result = .copiedOnly
 
         #expect(await harness.startListening())
-        harness.audio.samples = FakeAudioSource.silence(seconds: 1)
+        harness.audio.samples = FakeAudioSource.speech(seconds: 1)
         harness.controller.stop()
         await harness.controller.waitForWork()
 
@@ -197,7 +197,7 @@ struct DictationControllerTests {
 
         controller.handle(.pressed)
         #expect(controller.phase == .listening)
-        harness.audio.samples = FakeAudioSource.silence(seconds: 1)
+        harness.audio.samples = FakeAudioSource.speech(seconds: 1)
         harness.clock.now = 1
         controller.handle(.released)
         #expect(controller.phase == .transcribing)
