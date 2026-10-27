@@ -19,6 +19,22 @@ struct DictationHistoryTests {
         #expect(history.entries.isEmpty)
     }
 
+    @Test("one dictation can be removed, also after a restart")
+    func remove() throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "pavarotti-history-test-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let fileURL = folder.appending(path: "dictation-history.json")
+        let history = DictationHistory(fileURL: fileURL)
+        history.record("Erstes Diktat")
+        history.record("Zweites Diktat")
+
+        let first = try #require(history.entries.last)
+        history.remove(first.id)
+
+        #expect(history.entries.map(\.text) == ["Zweites Diktat"])
+        #expect(DictationHistory(fileURL: fileURL).entries.map(\.text) == ["Zweites Diktat"])
+    }
+
     @Test("survives a restart and starts empty from a broken file")
     func persistence() throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: "pavarotti-history-test-\(UUID().uuidString)")

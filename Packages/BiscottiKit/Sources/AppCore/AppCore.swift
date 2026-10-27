@@ -765,6 +765,16 @@ public extension AppCore {
         route = .onboarding
     }
 
+    /// Pavarotti: routes to the recent dictations.
+    func showDictations() {
+        route = .dictations
+    }
+
+    /// Pavarotti: routes to the audio file transcription.
+    func showFileTranscription() {
+        route = .transcribeFile
+    }
+
     /// Requests focus on the search field. Increments the focus token
     /// so `SearchFieldFocuser` (an `NSViewRepresentable` on the toolbar
     /// `TextField`) detects the change and calls

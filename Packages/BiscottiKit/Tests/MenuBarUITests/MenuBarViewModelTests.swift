@@ -326,6 +326,20 @@ struct MenuBarNavigationTests {
         #expect(windowOpened)
     }
 
+    @Test("openDictations opens the main window on the Dictations page")
+    @MainActor
+    func openDictationsRoutes() throws {
+        let fix = try makeCoreFixture(testName: "MenuBarNavTests")
+        defer { fix.cleanup() }
+        var windowOpened = false
+        let model = MenuBarViewModel(core: fix.core, windowOpener: { windowOpened = true })
+
+        model.openDictations()
+
+        #expect(fix.core.route == .dictations)
+        #expect(windowOpened)
+    }
+
     @Test("openApp with meetingID navigates to meeting route and calls windowOpener")
     @MainActor
     func openAppMeetingRoute() async throws {

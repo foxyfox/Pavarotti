@@ -125,6 +125,10 @@ public struct AppShellView: View {
             pastMeetingsRow
                 .padding(.horizontal, Tokens.spacingSM)
 
+            // Pavarotti: Dictations and Transcribe File rows
+            DictationSidebarRows(viewModel: viewModel)
+                .padding(.horizontal, Tokens.spacingSM)
+
             Divider()
                 .padding(.vertical, Tokens.spacingSM)
 
@@ -330,6 +334,9 @@ private struct DetailContentView: View {
 
         case .settings:
             SettingsView(viewModel: viewModel.settingsViewModel)
+
+        case .dictations, .transcribeFile:
+            DictationPage(viewModel: viewModel)
 
         case .onboarding:
             // Handled by the full-window takeover above; should not reach here.

@@ -20,4 +20,10 @@ public enum Route: Sendable, Equatable {
 
     /// First-run onboarding (full-window takeover).
     case onboarding
+
+    /// Pavarotti: the recent dictations, to read and copy them again.
+    case dictations
+
+    /// Pavarotti: transcribing an audio or video file to Markdown.
+    case transcribeFile
 }
