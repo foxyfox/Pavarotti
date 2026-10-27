@@ -81,8 +81,9 @@ public final class ModelManager {
     // MARK: - Derived reads
 
     /// Whether any model is available for AI analysis (active model exists).
+    /// Pavarotti: or a cloud provider is set up.
     public var isModelAvailable: Bool {
-        activeModelID != nil
+        activeModelID != nil || cloudProviderActive
     }
 
     /// The active model id resolved from downloads + selection.
@@ -108,6 +109,21 @@ public final class ModelManager {
     public func activeModelURL() -> URL? {
         guard let id = activeModelID else { return nil }
         return models.url(for: id)
+    }
+
+    // MARK: - Cloud provider (Pavarotti)
+
+    /// Whether AI runs go to a cloud provider set up in Settings, so no model needs
+    /// to be downloaded. Kept current by AppCore.
+    public var cloudProviderActive = false
+
+    /// Stands in for a model file when a run goes to a cloud provider.
+    public nonisolated static let cloudPlaceholderModelURL = URL(fileURLWithPath: "/dev/null/pavarotti-cloud-llm")
+
+    /// The model URL an AI run hands to the runner: the downloaded model, or the
+    /// placeholder when only a cloud provider is set up.
+    public func runModelURL() -> URL? {
+        activeModelURL() ?? (cloudProviderActive ? Self.cloudPlaceholderModelURL : nil)
     }
 
     /// The recommended model id for this hardware, delegating to

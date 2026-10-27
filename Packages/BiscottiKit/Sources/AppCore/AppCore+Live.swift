@@ -73,9 +73,8 @@ public extension AppCore {
         permissions.setNotificationAuthorizer(notifAuth)
 
         logger.info("AppCore.live: ModelManager + Intelligence init")
-        let (modelManager, intelligence) = buildModelAndIntelligence(
-            store: store
-        )
+        let cloudLLM = CloudLLMSettingsStore()
+        let (modelManager, intelligence) = buildModelAndIntelligence(store: store, cloudLLM: cloudLLM)
 
         logger.info("AppCore.live: constructing AppCore")
         let core = AppCore(
@@ -89,6 +88,7 @@ public extension AppCore {
             intelligence: intelligence,
             modelManager: modelManager
         )
+        core.useCloudLLM(cloudLLM)
         logger.info("AppCore.live: done")
         return core
     }
@@ -98,7 +98,8 @@ public extension AppCore {
     /// the function body length lint limit.
     @MainActor
     private static func buildModelAndIntelligence(
-        store: DataStore
+        store: DataStore,
+        cloudLLM: CloudLLMSettingsStore
     ) -> (ModelManager, Intelligence) {
         let modelProvider = LiveModelProvider()
         let hardwareProbe = LiveHardwareProbe()
@@ -107,7 +108,8 @@ public extension AppCore {
             models: modelProvider,
             hardware: hardwareProbe
         )
-        let llmRunner = LiveLLMRunner()
+        // Pavarotti: runs go to the cloud provider chosen in Settings, if any.
+        let llmRunner = ProviderLLMRunner(local: LiveLLMRunner(), endpoint: { cloudLLM.endpoint() })
         let intelligence = Intelligence(
             store: store,
             llm: llmRunner,

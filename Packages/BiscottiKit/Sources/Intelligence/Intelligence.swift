@@ -106,7 +106,7 @@ public final class Intelligence {
             return
         }
 
-        guard let modelURL = modelManager.activeModelURL() else {
+        guard let modelURL = modelManager.runModelURL() else {
             jobs.removeValue(forKey: meetingID)
             return
         }
@@ -179,7 +179,7 @@ public final class Intelligence {
             return
         }
 
-        guard let modelURL = modelManager.activeModelURL() else { return }
+        guard let modelURL = modelManager.runModelURL() else { return }
 
         // Resolve the effective summary instruction
         let effective: String = if let override = summaryPromptOverride {

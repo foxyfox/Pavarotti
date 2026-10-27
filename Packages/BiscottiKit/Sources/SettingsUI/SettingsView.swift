@@ -79,6 +79,9 @@ public struct SettingsView: View {
                     generalSection
                     permissionsSection
                     notificationsSection
+                    if let cloudLLM = viewModel.appCore.cloudLLM {
+                        CloudLLMSettingsSection(appCore: viewModel.appCore, store: cloudLLM)
+                    }
                     aiEnhancementsSection
                     MeetingNotesSettingsSection(appCore: viewModel.appCore)
                     customVocabularySection
