@@ -25,7 +25,9 @@ public struct MenuBarContentView: View {
         // Pavarotti: the last dictations, to copy one that was not pasted, and
         // transcribing an audio file to Markdown.
         if let dictation = viewModel.dictation {
-            RecentDictationsMenu(controller: dictation)
+            RecentDictationsMenu(controller: dictation) {
+                viewModel.openDictations()
+            }
             FileTranscriptionMenuItem(controller: dictation)
         }
 

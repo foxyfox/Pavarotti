@@ -3,6 +3,7 @@ import AppKit
 import Calendar
 import DataStore
 import DesignSystem
+import Dictation
 import Formatting
 import Foundation
 import HomeUI
@@ -243,6 +244,24 @@ public final class AppShellViewModel {
     /// Routes to Settings.
     public func showSettings() {
         core.showSettings()
+    }
+
+    // MARK: - Pavarotti: dictation pages
+
+    /// Dictation, for the Dictations and Transcribe File pages. `nil` in tests and
+    /// previews, where the sidebar leaves both out.
+    public var dictation: DictationController? {
+        core.dictation
+    }
+
+    /// Routes to the recent dictations.
+    public func showDictations() {
+        core.showDictations()
+    }
+
+    /// Routes to the audio file transcription.
+    public func showFileTranscription() {
+        core.showFileTranscription()
     }
 
     /// Requests focus on the search field (Cmd+F).

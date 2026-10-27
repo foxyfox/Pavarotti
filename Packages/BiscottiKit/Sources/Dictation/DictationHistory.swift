@@ -39,7 +39,7 @@ public struct DictationHistoryEntry: Codable, Equatable, Identifiable, Sendable 
 @MainActor @Observable
 public final class DictationHistory {
     /// How many dictations are kept.
-    public static let limit = 20
+    public static let limit = 100
 
     public private(set) var entries: [DictationHistoryEntry] = []
     private let fileURL: URL?
@@ -62,6 +62,12 @@ public final class DictationHistory {
         if entries.count > Self.limit {
             entries.removeLast(entries.count - Self.limit)
         }
+        save()
+    }
+
+    /// Removes one dictation.
+    public func remove(_ id: DictationHistoryEntry.ID) {
+        entries.removeAll { $0.id == id }
         save()
     }
 
@@ -113,7 +119,7 @@ public final class DictationHistory {
 }
 
 public extension DictationController {
-    /// The last dictations, for the menu bar.
+    /// The last dictations, for the menu bar and the Dictations page.
     var history: DictationHistory {
         dependencies.history
     }

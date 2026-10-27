@@ -382,6 +382,22 @@ struct AppShellUpcomingSearchTests {
         #expect(shellVM.route == .settings)
     }
 
+    @Test("the dictation pages have their own routes")
+    @MainActor
+    func dictationPagesRoute() throws {
+        let fix = try makeCoreFixture(testName: "AppShellUITests")
+        defer { fix.cleanup() }
+
+        let shellVM = AppShellViewModel(core: fix.core)
+        shellVM.showDictations()
+        #expect(shellVM.route == .dictations)
+        shellVM.showFileTranscription()
+        #expect(shellVM.route == .transcribeFile)
+        #expect(shellVM.isHome == false)
+        // Without dictation (as in tests) the sidebar leaves both rows out.
+        #expect(shellVM.dictation == nil)
+    }
+
     @Test("selectEvent routes to event preview")
     @MainActor
     func selectEventRoutes() throws {

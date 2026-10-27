@@ -4,7 +4,8 @@ import SwiftUI
 
 /// The "Transcribe Audio File" window: drop, paste or choose a file, then copy or save the
 /// transcript as Markdown. One window for the app's lifetime, created on first use, so a
-/// result survives closing it.
+/// result survives closing it. The main window's Transcribe File page shows the same
+/// transcription.
 @MainActor
 public final class FileTranscriptionWindow {
     private static var shared: FileTranscriptionWindow?
@@ -20,7 +21,7 @@ public final class FileTranscriptionWindow {
     }
 
     private init(controller: DictationController) {
-        let session = FileTranscriptionSession(controller: controller)
+        let session = SharedFileTranscription.session(for: controller)
         let window = FileDropWindow(
             contentRect: NSRect(x: 0, y: 0, width: 560, height: 460),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],

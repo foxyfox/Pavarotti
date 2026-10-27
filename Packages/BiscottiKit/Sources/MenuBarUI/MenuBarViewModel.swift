@@ -139,6 +139,13 @@ public final class MenuBarViewModel {
         windowOpener()
     }
 
+    /// Pavarotti: opens the main window on the Dictations page, the full list behind the
+    /// menu's recent dictations.
+    public func openDictations() {
+        core.showDictations()
+        windowOpener()
+    }
+
     // TODO(see-all): add a 'See All' menu entry once a full upcoming/recent list page exists
 
     /// Quit the application. Called from the menu bar Quit button.
