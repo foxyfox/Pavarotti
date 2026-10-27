@@ -36,6 +36,8 @@ public struct DictationSettings: Codable, Equatable, Sendable {
     public var duckingLevel = 0.2
     /// Puts the previous clipboard contents back after pasting.
     public var restoresClipboard = true
+    /// Adds words the user fixes after pasting to the dictionary.
+    public var learnsFromCorrections = true
 
     public init() {}
 
@@ -56,6 +58,7 @@ public struct DictationSettings: Codable, Equatable, Sendable {
         ducksAudio = container.value(.ducksAudio, default: defaults.ducksAudio)
         duckingLevel = container.value(.duckingLevel, default: defaults.duckingLevel)
         restoresClipboard = container.value(.restoresClipboard, default: defaults.restoresClipboard)
+        learnsFromCorrections = container.value(.learnsFromCorrections, default: defaults.learnsFromCorrections)
     }
 }
 

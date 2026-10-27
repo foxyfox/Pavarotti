@@ -4,7 +4,7 @@ import Dictation
 import SwiftUI
 
 /// The Dictation part of Settings: shortcut, language, model, Accessibility access,
-/// sounds, audio ducking and the import from TypeWhisper.
+/// sounds, audio ducking, the dictionary and the import from TypeWhisper.
 public struct DictationSettingsSection: View {
     let controller: DictationController
     @State var importSummary: String?
@@ -60,6 +60,7 @@ public struct DictationSettingsSection: View {
                 soundRows
                 duckingRows
             }
+            DictionarySection(controller: controller)
         }
     }
 
@@ -170,7 +171,7 @@ public struct DictationSettingsSection: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                 }
-                Text(importSummary ?? "Takes over the start, done and error sounds, ducking and the shortcut.")
+                Text(importSummary ?? "Takes over the start, done and error sounds, ducking, the shortcut and the dictionary.")
                     .font(Tokens.metadataFont)
                     .foregroundStyle(Tokens.secondaryText)
             }

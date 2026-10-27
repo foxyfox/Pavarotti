@@ -149,6 +149,34 @@ final class FakeAccessibility: AccessibilityTrust {
     }
 }
 
+/// Records watches and lets the test report a correction.
+@MainActor
+final class FakeCorrectionWatcher: CorrectionWatching {
+    private(set) var watched: [String] = []
+    private(set) var finishCount = 0
+    private(set) var stopCount = 0
+    private var onCorrection: (@MainActor (DetectedCorrection) -> Void)?
+
+    func watch(inserted: String, onCorrection: @escaping @MainActor (DetectedCorrection) -> Void) {
+        watched.append(inserted)
+        self.onCorrection = onCorrection
+    }
+
+    func finish() {
+        finishCount += 1
+    }
+
+    func stop() {
+        stopCount += 1
+        onCorrection = nil
+    }
+
+    /// Simulates the user fixing a word in the watched field.
+    func report(_ correction: DetectedCorrection) {
+        onCorrection?(correction)
+    }
+}
+
 @MainActor
 final class TestClock {
     var now: TimeInterval = 0
@@ -169,6 +197,8 @@ final class DictationHarness {
     let ducker = FakeDucker()
     let accessibility = FakeAccessibility()
     let clock = TestClock()
+    let dictionary = PersonalDictionary(fileURL: nil)
+    let corrections = FakeCorrectionWatcher()
     let defaults: UserDefaults
     let soundFolder: URL
     let controller: DictationController
@@ -189,7 +219,9 @@ final class DictationHarness {
             sounds: sounds,
             ducker: ducker,
             accessibility: accessibility,
-            soundLibrary: SoundLibrary(directory: soundFolder)
+            soundLibrary: SoundLibrary(directory: soundFolder),
+            dictionary: dictionary,
+            corrections: corrections
         )
         let clock = clock
         controller = DictationController(store: store, dependencies: dependencies) { clock.now }

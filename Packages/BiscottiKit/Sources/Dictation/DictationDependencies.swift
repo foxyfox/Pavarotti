@@ -93,6 +93,18 @@ public protocol AccessibilityTrust: AnyObject {
     func requestTrust()
 }
 
+/// Watches the text field after pasting for corrections the user makes.
+@MainActor
+public protocol CorrectionWatching: AnyObject {
+    /// Starts watching the focused field, into which `inserted` was just pasted.
+    /// Ends any earlier watch first.
+    func watch(inserted: String, onCorrection: @escaping @MainActor (DetectedCorrection) -> Void)
+    /// Ends the watch and reports a correction the user already made.
+    func finish()
+    /// Ends the watch without reporting anything.
+    func stop()
+}
+
 /// The parts of dictation that touch the system, bundled for injection.
 @MainActor
 public struct DictationDependencies {
@@ -103,6 +115,8 @@ public struct DictationDependencies {
     public var ducker: any OutputDucking
     public var accessibility: any AccessibilityTrust
     public var soundLibrary: SoundLibrary
+    public var dictionary: PersonalDictionary
+    public var corrections: any CorrectionWatching
 
     public init(
         audio: any DictationAudioSource,
@@ -111,7 +125,9 @@ public struct DictationDependencies {
         sounds: any SoundCuePlaying,
         ducker: any OutputDucking,
         accessibility: any AccessibilityTrust,
-        soundLibrary: SoundLibrary
+        soundLibrary: SoundLibrary,
+        dictionary: PersonalDictionary,
+        corrections: any CorrectionWatching
     ) {
         self.audio = audio
         self.engine = engine
@@ -120,5 +136,7 @@ public struct DictationDependencies {
         self.ducker = ducker
         self.accessibility = accessibility
         self.soundLibrary = soundLibrary
+        self.dictionary = dictionary
+        self.corrections = corrections
     }
 }

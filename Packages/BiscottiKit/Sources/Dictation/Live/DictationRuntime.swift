@@ -23,7 +23,9 @@ public final class DictationRuntime {
             sounds: SoundCuePlayer(library: library),
             ducker: SystemOutputDucker(),
             accessibility: trust,
-            soundLibrary: library
+            soundLibrary: library,
+            dictionary: PersonalDictionary(fileURL: PersonalDictionary.standardFileURL),
+            corrections: CorrectionWatcher(reader: AccessibilityFocusedTextReader(), signals: CommitKeyMonitor())
         )
         return DictationRuntime(controller: DictationController(store: DictationSettingsStore(), dependencies: dependencies))
     }

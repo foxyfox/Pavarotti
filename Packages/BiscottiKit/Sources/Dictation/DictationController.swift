@@ -39,6 +39,8 @@ public final class DictationController {
     public private(set) var isAccessibilityTrusted = false
     public private(set) var lastTranscript: String?
     public private(set) var customSounds: [String] = []
+    /// A short message for the indicator, such as a word the dictionary just learned.
+    public internal(set) var notice: String?
     /// While true, shortcut events are ignored (the settings are recording a new shortcut).
     public var isCapturingShortcut = false
 
@@ -56,6 +58,7 @@ public final class DictationController {
     @ObservationIgnored private var failureTask: Task<Void, Never>?
     @ObservationIgnored var workTask: Task<Void, Never>?
     @ObservationIgnored private var engineTask: Task<Void, Never>?
+    @ObservationIgnored var noticeTask: Task<Void, Never>?
 
     private static let logger = Logger(subsystem: "de.foxagon.pavarotti", category: "Dictation")
 
@@ -109,6 +112,8 @@ public final class DictationController {
     /// Starts listening. Does nothing while a dictation is already running.
     public func start() {
         guard settings.isEnabled, phase != .listening, phase != .transcribing else { return }
+        // The user moved on to the next dictation, so the last one is done.
+        dependencies.corrections.finish()
         guard dependencies.engine.isInstalled(modelID: settings.modelID) else {
             gesture.reset()
             fail(DictationError.modelNotInstalled.localizedDescription)
@@ -202,7 +207,7 @@ public final class DictationController {
 
     private func transcribeAndInsert(_ samples: [Float], snapshot: DictationSettings, session started: Int) async {
         do {
-            let text = try await dependencies.engine.transcribe(
+            let heard = try await dependencies.engine.transcribe(
                 samples: samples,
                 sampleRate: DictationAudio.sampleRate,
                 language: snapshot.language,
@@ -213,15 +218,19 @@ public final class DictationController {
             if engineState != .ready, snapshot.modelID == settings.modelID {
                 engineState = .ready
             }
-            guard !text.isEmpty else {
+            guard !heard.isEmpty else {
                 phase = .idle
                 return
             }
+            let text = dependencies.dictionary.apply(to: heard)
             lastTranscript = text
             switch await dependencies.inserter.insert(text, restoringClipboard: snapshot.restoresClipboard) {
             case .pasted:
                 playCue(snapshot.doneSound)
                 phase = .idle
+                if snapshot.learnsFromCorrections {
+                    watchForCorrections(after: text)
+                }
             case .copiedOnly:
                 fail("Copied to the clipboard. Allow Accessibility access so Pavarotti can paste for you.")
             }
@@ -268,6 +277,9 @@ public extension DictationController {
         gesture.mode = next.mode
         if !next.isEnabled {
             cancel()
+        }
+        if !next.isEnabled || !next.learnsFromCorrections {
+            dependencies.corrections.stop()
         }
         if previous.shortcut != next.shortcut || previous.isEnabled != next.isEnabled {
             onShortcutConfigurationChange?()
