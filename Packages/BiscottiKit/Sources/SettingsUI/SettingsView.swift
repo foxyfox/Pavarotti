@@ -32,6 +32,8 @@ public struct SettingsView: View {
     /// (`SettingsMCPRow.swift`) can present the toggle-on confirmation
     /// alert (functional spec §2.1).
     @State var showMCPConfirm = false
+    /// Pavarotti: the page Settings shows, remembered across launches.
+    @AppStorage(SettingsPane.defaultsKey) private var pane = SettingsPane.dictation
 
     public init(viewModel: SettingsViewModel) {
         self.viewModel = viewModel
@@ -61,6 +63,10 @@ public struct SettingsView: View {
     /// (EventPreview, MeetingDetail).
     static let pageTitle = "Settings"
 
+    /// Pavarotti: the section on the Meetings page with the recording rows that
+    /// upstream keeps under General.
+    static let recordingSectionTitle = "Recording"
+
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.spacingMD) {
@@ -71,26 +77,12 @@ public struct SettingsView: View {
                     // Match the grouped Form's internal leading inset
                     .padding(.leading, Tokens.groupedFormLeadingInset)
 
-                Form {
-                    // Pavarotti: dictation comes first, it is the most used feature.
-                    if let dictation = viewModel.appCore.dictation {
-                        DictationSettingsSection(controller: dictation)
-                    }
-                    generalSection
-                    permissionsSection
-                    notificationsSection
-                    if let cloudLLM = viewModel.appCore.cloudLLM {
-                        CloudLLMSettingsSection(appCore: viewModel.appCore, store: cloudLLM)
-                    }
-                    aiEnhancementsSection
-                    MeetingNotesSettingsSection(appCore: viewModel.appCore)
-                    customVocabularySection
-                    importExportSection
-                    calendarSection
+                // Pavarotti: one page at a time instead of one long list.
+                SettingsPaneBar(selection: $pane, panes: availablePanes)
+                    .padding(.leading, Tokens.groupedFormLeadingInset)
 
-                    #if DEBUG
-                        debugSection
-                    #endif
+                Form {
+                    paneSections
                 }
                 .formStyle(.grouped)
                 .scrollContentBackground(.hidden)
@@ -121,27 +113,7 @@ public struct SettingsView: View {
                     .font(Tokens.metadataFont)
                     .foregroundStyle(Tokens.secondaryText)
             }
-            Toggle(
-                "Global shortcut to start recording (\u{2318}\u{21E7}R)",
-                isOn: globalRecordShortcutBinding
-            )
-            VStack(alignment: .leading, spacing: Tokens.spacingXS) {
-                Toggle(
-                    "Stop Recording Automatically",
-                    isOn: stopRecordingAutomaticallyBinding
-                )
-                Text("Stop recording when we detect your meeting has ended.")
-                    .font(Tokens.metadataFont)
-                    .foregroundStyle(Tokens.secondaryText)
-            }
-            Picker(
-                "Show next meeting in menu bar",
-                selection: menuBarLeadTimeBinding
-            ) {
-                ForEach(MenuBarLeadTime.allCases) { option in
-                    Text(option.displayText).tag(option)
-                }
-            }
+            // Pavarotti: the recording rows moved to the Meetings page.
             appUpdatesRow
             mcpRow
             setupRow
@@ -264,6 +236,75 @@ public struct SettingsView: View {
             }
         }
     #endif
+}
+
+// MARK: - Pavarotti: pages
+
+private extension SettingsView {
+    /// The pages to offer: Dictation only when the app has dictation.
+    var availablePanes: [SettingsPane] {
+        SettingsPane.allCases.filter { $0 != .dictation || viewModel.appCore.dictation != nil }
+    }
+
+    /// The remembered page, or the first one offered when it is not.
+    var shownPane: SettingsPane {
+        availablePanes.contains(pane) ? pane : availablePanes.first ?? .general
+    }
+
+    @ViewBuilder
+    var paneSections: some View {
+        switch shownPane {
+        case .dictation:
+            if let dictation = viewModel.appCore.dictation {
+                DictationSettingsSection(controller: dictation)
+            }
+        case .meetings:
+            recordingSection
+            notificationsSection
+            MeetingNotesSettingsSection(appCore: viewModel.appCore)
+            customVocabularySection
+            calendarSection
+        case .intelligence:
+            if let cloudLLM = viewModel.appCore.cloudLLM {
+                CloudLLMSettingsSection(appCore: viewModel.appCore, store: cloudLLM)
+            }
+            aiEnhancementsSection
+        case .general:
+            generalSection
+            permissionsSection
+            importExportSection
+            #if DEBUG
+                debugSection
+            #endif
+        }
+    }
+
+    /// The recording preferences, from upstream's General section.
+    var recordingSection: some View {
+        Section(Self.recordingSectionTitle) {
+            Toggle(
+                "Global shortcut to start recording (\u{2318}\u{21E7}R)",
+                isOn: globalRecordShortcutBinding
+            )
+            VStack(alignment: .leading, spacing: Tokens.spacingXS) {
+                Toggle(
+                    "Stop Recording Automatically",
+                    isOn: stopRecordingAutomaticallyBinding
+                )
+                Text("Stop recording when we detect your meeting has ended.")
+                    .font(Tokens.metadataFont)
+                    .foregroundStyle(Tokens.secondaryText)
+            }
+            Picker(
+                "Show next meeting in menu bar",
+                selection: menuBarLeadTimeBinding
+            ) {
+                ForEach(MenuBarLeadTime.allCases) { option in
+                    Text(option.displayText).tag(option)
+                }
+            }
+        }
+    }
 }
 
 // MARK: - AI Enhancements section
