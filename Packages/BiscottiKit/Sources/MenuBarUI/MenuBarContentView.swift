@@ -22,9 +22,11 @@ public struct MenuBarContentView: View {
         // Recording section
         recordingSection
 
-        // Pavarotti: the last dictations, to copy one that was not pasted.
+        // Pavarotti: the last dictations, to copy one that was not pasted, and
+        // transcribing an audio file to Markdown.
         if let dictation = viewModel.dictation {
             RecentDictationsMenu(controller: dictation)
+            FileTranscriptionMenuItem(controller: dictation)
         }
 
         Divider()

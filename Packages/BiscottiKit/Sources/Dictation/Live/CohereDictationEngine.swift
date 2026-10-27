@@ -56,6 +56,25 @@ public actor CohereDictationEngine: DictationTranscribing {
         return result.text
     }
 
+    public func transcribeTimed(
+        samples: [Float],
+        sampleRate: Int,
+        language: TranscriptionLanguage,
+        modelID: String
+    ) async throws -> TimedTranscription {
+        let result = try await loadedTranscriber(for: modelID).transcribe(
+            samples: samples,
+            sampleRate: sampleRate,
+            language: language
+        )
+        var passages = result.segments.map { TimedText(start: $0.start, end: $0.end, text: $0.text) }
+        if passages.isEmpty, !result.text.isEmpty {
+            // The server left out the segments; the text then covers the whole audio.
+            passages = [TimedText(start: 0, end: Double(samples.count) / Double(sampleRate), text: result.text)]
+        }
+        return TimedTranscription(language: result.language, passages: passages)
+    }
+
     public func shutdown() async {
         let running = transcriber
         transcriber = nil
