@@ -14,18 +14,18 @@ public struct BundledMeetingCatalog: MeetingCatalog {
 
     public func displayName(forBundleID id: String) -> String? {
         // For helpers, return the parent's display name
-        if let parentID = Self.helperToParent[id] {
+        if let parentID = parentBundleID(forHelperBundleID: id) {
             return Self.appNames[parentID]
         }
         return Self.appNames[id]
     }
 
     public func isMeetingApp(bundleID: String) -> Bool {
-        Self.meetingBundleIDs.contains(bundleID)
+        Self.meetingBundleIDs.contains(bundleID) || Self.prefixParent(of: bundleID) != nil
     }
 
     public func parentBundleID(forHelperBundleID id: String) -> String? {
-        Self.helperToParent[id]
+        Self.helperToParent[id] ?? Self.prefixParent(of: id)
     }
 
     // MARK: - Conference detection
@@ -49,6 +49,16 @@ public struct BundledMeetingCatalog: MeetingCatalog {
     }
 
     // MARK: - Private
+
+    /// Pavarotti: helper processes usually extend their app's bundle ID
+    /// (`com.google.Chrome.helper`, `com.brave.Browser.helper.renderer`), so an
+    /// unlisted one counts as that app. The longest matching app wins.
+    private static func prefixParent(of id: String) -> String? {
+        guard !meetingBundleIDs.contains(id) else { return nil }
+        return appNames.keys
+            .filter { id.hasPrefix($0 + ".") }
+            .max { $0.count < $1.count }
+    }
 
     private func matchInText(_ text: String) -> (platform: String, url: URL)? {
         for entry in Self.compiledPatterns {
@@ -93,6 +103,10 @@ public struct BundledMeetingCatalog: MeetingCatalog {
         "com.google.Chrome",
         "com.apple.Safari",
         "company.thebrowser.Browser",
+        // Pavarotti: the other browsers the TypeWhisper fork watched.
+        "org.mozilla.firefox",
+        "com.microsoft.edgemac",
+        "com.brave.Browser",
 
         // System helpers (audio-routing daemons)
         "com.apple.avconferenced",
@@ -118,7 +132,10 @@ public struct BundledMeetingCatalog: MeetingCatalog {
         "com.hnc.Discord": "Discord",
         "com.apple.FaceTime": "FaceTime",
         "com.apple.Safari": "Safari",
-        "company.thebrowser.Browser": "Arc Browser"
+        "company.thebrowser.Browser": "Arc Browser",
+        "org.mozilla.firefox": "Firefox",
+        "com.microsoft.edgemac": "Microsoft Edge",
+        "com.brave.Browser": "Brave Browser"
     ]
 
     /// Helper-process to user-facing parent mapping.

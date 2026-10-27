@@ -125,6 +125,8 @@ public extension AppCore {
                 )
             }
         )
+        // Pavarotti: other people's voices name speakers only with their consent.
+        intelligence.voiceConsent = VoiceConsentStore()
         return (modelManager, intelligence)
     }
 

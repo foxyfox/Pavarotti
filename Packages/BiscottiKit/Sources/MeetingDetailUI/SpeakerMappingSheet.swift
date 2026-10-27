@@ -1,5 +1,6 @@
 import DataStore
 import DesignSystem
+import Intelligence
 import SwiftUI
 
 /// A sheet that lets the user map each diarization speaker to a person.
@@ -13,6 +14,8 @@ struct SpeakerMappingSheet: View {
     let onAddPerson: (Int, String) async -> Void
     let onUnassign: (Int) async -> Void
     let onDismiss: () -> Void
+    /// Pavarotti: where consent to remember a voice is noted; `nil` hides the checkbox.
+    var voiceConsent: VoiceConsentStore?
 
     /// Tracks which speaker's popover is currently open (nil = none).
     @State private var openPopoverSpeakerID: Int?
@@ -101,6 +104,11 @@ struct SpeakerMappingSheet: View {
             personPickerPill(for: row)
 
             Spacer()
+
+            if let person = row.assigned, !person.isCurrentUser, let voiceConsent {
+                VoiceConsentToggle(person: person, store: voiceConsent)
+                    .id(person.id)
+            }
         }
     }
 
