@@ -26,8 +26,8 @@ struct ModelCard: View {
     private var transcriptionRow: some View {
         ModelDownloadRow(
             icon: "waveform",
-            name: "Meeting Transcription & Speaker ID",
-            why: "Turns speech into text and labels who\u{2019}s speaking.",
+            name: "Meeting Speakers & Word Timing",
+            why: "Labels who\u{2019}s speaking in meetings. Cohere, above, writes the text.",
             state: viewModel.transcriptionRowState(),
             onDownload: {
                 Task { await viewModel.startTranscriptionDownload() }

@@ -18,7 +18,7 @@ public final class DictationRuntime {
         let library = SoundLibrary.standard
         let dependencies = DictationDependencies(
             audio: MicrophoneRecorder(),
-            engine: CohereDictationEngine(),
+            engine: CohereDictationEngine.shared,
             inserter: PasteboardTextInserter(trust: trust),
             sounds: SoundCuePlayer(library: library),
             ducker: SystemOutputDucker(),

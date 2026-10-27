@@ -66,8 +66,13 @@ public actor CohereTranscriber {
             requested = retry
             answer = try await server.transcribe(request(audio: audio, filename: filename, language: retry))
         }
-        let segments = (answer.segments ?? []).map {
-            CohereTranscription.Segment(start: $0.start, end: $0.end, text: $0.text)
+        let segments = (answer.segments ?? []).map { segment in
+            CohereTranscription.Segment(
+                start: segment.start,
+                end: segment.end,
+                text: segment.text,
+                words: (segment.words ?? []).map { CohereTranscription.Word(text: $0.word, start: $0.start, end: $0.end) }
+            )
         }
         return CohereTranscription(
             text: answer.text.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -81,6 +86,11 @@ public actor CohereTranscriber {
     }
 
     private func runningServer() async throws -> CrispASRServer {
+        if let server, server.configuration.wordAligner == nil, installer.isInstalled(CohereAssetCatalog.wordAligner) {
+            // The aligner was installed while the server ran; restart so it takes part.
+            await server.stop()
+            self.server = nil
+        }
         let running = try server ?? makeServer()
         server = running
         try await running.start()
@@ -101,6 +111,9 @@ public actor CohereTranscriber {
             languageIdentificationModel: root.appending(
                 path: CohereAssetCatalog.languageIdentificationModel.relativePath
             ),
+            wordAligner: installer.isInstalled(CohereAssetCatalog.wordAligner)
+                ? root.appending(path: CohereAssetCatalog.wordAligner.relativePath)
+                : nil,
             cacheDirectory: root.appending(path: "Cache", directoryHint: .isDirectory)
         )
         return CrispASRServer(configuration: configuration)

@@ -357,6 +357,64 @@ public actor Transcriber {
     }
 }
 
+// MARK: - Pavarotti: transcripts made elsewhere
+
+public extension Transcriber {
+    /// Diarizes the recording and gives each sentence of `transcript` (made by Cohere in
+    /// the app, on the merged audio's timeline) a speaker. WhisperKit is never loaded.
+    func processAudio(
+        mic: URL,
+        system: URL,
+        transcript: ProvidedTranscript
+    ) async throws -> TranscriptResult {
+        Self.log.info("client: processAudio(transcript:) called")
+        try checkInterrupted()
+        let activeEngine = ensureConnected()
+        emitStatus(.running)
+        do {
+            let result = try await activeEngine.processAudio(
+                micPath: mic.path,
+                systemPath: system.path,
+                transcript: transcript
+            )
+            emitStatus(.ready)
+            return result
+        } catch {
+            let mapped = mapToTranscriptionError(error)
+            emitStatus(.error(mapped))
+            throw mapped
+        }
+    }
+
+    /// Downloads only the speaker model; see ``ensureModelsDownloaded(status:)``.
+    func ensureSpeakerModelsDownloaded(
+        status: (@Sendable (String) -> Void)? = nil
+    ) async throws {
+        Self.log.info("client: ensureSpeakerModelsDownloaded called")
+        try checkInterrupted()
+        let activeEngine = ensureConnected()
+        emitStatus(.downloading(progress: 0.0))
+        xpcConnection?.setStatusHandler(status)
+        defer { xpcConnection?.setStatusHandler(nil) }
+        do {
+            try await activeEngine.ensureSpeakerModelsDownloaded(status: status ?? { _ in })
+            emitStatus(.ready)
+        } catch {
+            let mapped = mapToTranscriptionError(error)
+            emitStatus(.error(mapped))
+            throw mapped
+        }
+    }
+
+    /// Whether the speaker model is on disk. Read-only, like ``modelsPresent()``.
+    func speakerModelsPresent() async -> Bool {
+        if let existing = engine {
+            return await existing.speakerModelsPresent()
+        }
+        return InProcessTranscriptionEngine.speakerKitModelsPresent()
+    }
+}
+
 /// Thread-safe mutable flag for XPC interruption state.
 ///
 /// The `NSXPCConnection` interruption handler runs on an arbitrary queue,

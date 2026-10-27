@@ -5,12 +5,36 @@ import Synchronization
 /// Dictation on top of the local Cohere Transcribe server. Keeps one model loaded and
 /// switches when the selected model changes.
 public actor CohereDictationEngine: DictationTranscribing {
+    /// The engine dictation, files and meetings share, so only one server and one model
+    /// are ever loaded.
+    public static let shared = CohereDictationEngine()
+
     private let installer: CohereInstaller
     private var transcriber: CohereTranscriber?
     private var loadedModelID: String?
 
     public init(installer: CohereInstaller = CohereInstaller()) {
         self.installer = installer
+    }
+
+    /// Whether the word aligner for meeting transcripts is installed.
+    public nonisolated var isWordAlignerInstalled: Bool {
+        installer.isInstalled(CohereAssetCatalog.wordAligner)
+    }
+
+    /// Bytes the word aligner still needs to download, 0 once installed.
+    public nonisolated var wordAlignerDownloadBytes: Int64 {
+        isWordAlignerInstalled ? 0 : CohereAssetCatalog.wordAligner.size
+    }
+
+    /// Installs the word aligner. The server takes it up with the next request.
+    public func installWordAligner(progress: @escaping @Sendable (Double) -> Void) async throws {
+        let throttle = ProgressThrottle()
+        try await installer.install(assets: [CohereAssetCatalog.wordAligner]) { update in
+            if throttle.shouldReport(update.fraction) {
+                progress(update.fraction)
+            }
+        }
     }
 
     public nonisolated func isInstalled(modelID: String) -> Bool {
@@ -67,7 +91,14 @@ public actor CohereDictationEngine: DictationTranscribing {
             sampleRate: sampleRate,
             language: language
         )
-        var passages = result.segments.map { TimedText(start: $0.start, end: $0.end, text: $0.text) }
+        var passages = result.segments.map { segment in
+            TimedText(
+                start: segment.start,
+                end: segment.end,
+                text: segment.text,
+                words: segment.words.map { TimedWord(text: $0.text, start: $0.start, end: $0.end) }
+            )
+        }
         if passages.isEmpty, !result.text.isEmpty {
             // The server left out the segments; the text then covers the whole audio.
             passages = [TimedText(start: 0, end: Double(samples.count) / Double(sampleRate), text: result.text)]

@@ -97,7 +97,8 @@ public final class DictationSettingsStore {
     }
 
     /// The saved settings, readable off the main actor; defaults when none are saved.
-    nonisolated static func load(from defaults: UserDefaults) -> DictationSettings {
+    /// Meeting transcription reads the model and language from here.
+    public nonisolated static func load(from defaults: UserDefaults = .standard) -> DictationSettings {
         guard let data = defaults.data(forKey: key),
               let settings = try? JSONDecoder().decode(DictationSettings.self, from: data)
         else {

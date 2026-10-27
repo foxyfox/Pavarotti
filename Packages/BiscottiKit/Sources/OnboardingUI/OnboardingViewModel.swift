@@ -169,8 +169,9 @@ public final class OnboardingViewModel {
     var dictationFacts: DictationRowFacts?
 
     /// Approximate disk space required for the transcription model (MB).
-    /// Aligned with the ~1.5 GB WhisperKit model bundle.
-    public static let requiredDiskSpaceMB: Int = 1500
+    /// Pavarotti: the speaker model and Cohere's word aligner, about 430 MB; WhisperKit
+    /// is no longer downloaded.
+    public static let requiredDiskSpaceMB: Int = 450
 
     /// Pre-warm task that runs model probes early (on the permissions
     /// screen) so the model-download screen arrives spinner-free when

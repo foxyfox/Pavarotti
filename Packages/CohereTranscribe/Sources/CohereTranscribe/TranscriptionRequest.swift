@@ -2,16 +2,34 @@ import Foundation
 
 /// A finished transcription.
 public struct CohereTranscription: Sendable, Equatable {
+    /// One word with its time range in seconds. With the word aligner installed the start
+    /// is measured from the audio and the end lies about one aligner frame (80 ms) later,
+    /// or over the following pause for words that end a sentence.
+    public struct Word: Sendable, Equatable {
+        public let text: String
+        public let start: Double
+        public let end: Double
+
+        public init(text: String, start: Double, end: Double) {
+            self.text = text
+            self.start = start
+            self.end = end
+        }
+    }
+
     /// One stretch of speech with its time range in seconds.
     public struct Segment: Sendable, Equatable {
         public let start: Double
         public let end: Double
         public let text: String
+        /// The segment's words, empty when the server sent none.
+        public let words: [Word]
 
-        public init(start: Double, end: Double, text: String) {
+        public init(start: Double, end: Double, text: String, words: [Word] = []) {
             self.start = start
             self.end = end
             self.text = text
+            self.words = words
         }
     }
 
@@ -29,10 +47,17 @@ public struct CohereTranscription: Sendable, Equatable {
 
 /// The server's OpenAI-compatible `verbose_json` answer.
 struct ServerTranscription: Decodable, Equatable {
+    struct Word: Decodable, Equatable {
+        let word: String
+        let start: Double
+        let end: Double
+    }
+
     struct Segment: Decodable, Equatable {
         let start: Double
         let end: Double
         let text: String
+        let words: [Word]?
     }
 
     let text: String

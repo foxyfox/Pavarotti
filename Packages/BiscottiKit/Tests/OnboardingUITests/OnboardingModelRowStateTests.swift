@@ -22,7 +22,7 @@ struct TranscriptionRowStateTests {
         await viewModel.skip() // -> modelDownload (prepareModelStep runs)
 
         let state = viewModel.transcriptionRowState()
-        #expect(state == .idle(sizeCaption: "~1.5 GB"))
+        #expect(state == .idle(sizeCaption: "~430 MB"))
     }
 
     @Test("ready when transcription already downloaded on entry")
@@ -49,7 +49,7 @@ struct TranscriptionRowStateTests {
         await viewModel.advance()
         await viewModel.skip()
 
-        #expect(viewModel.transcriptionRowState() == .idle(sizeCaption: "~1.5 GB"))
+        #expect(viewModel.transcriptionRowState() == .idle(sizeCaption: "~430 MB"))
 
         // Clear the error so download succeeds
         fixture.fakeEngine.backing.ensureModelsError = nil

@@ -13,7 +13,8 @@ public enum CohereLocations {
     }
 
     /// Existing TypeWhisper downloads that can be copied instead of downloaded again.
-    /// The second entry is the plugin's older directory name.
+    /// The second entry is the plugin's older directory name, the third the fork's own
+    /// data directory, which holds the word aligner under `MeetingModels/`.
     public static var typeWhisperSeedRoots: [URL] {
         let models = applicationSupport.appending(
             path: "TypeWhisper/PluginData/com.typewhisper.cohere-transcribe/Models",
@@ -21,7 +22,8 @@ public enum CohereLocations {
         )
         return [
             models.appending(path: assetDirectoryName, directoryHint: .isDirectory),
-            models.appending(path: "\(assetDirectoryName)-q5_0", directoryHint: .isDirectory)
+            models.appending(path: "\(assetDirectoryName)-q5_0", directoryHint: .isDirectory),
+            applicationSupport.appending(path: "TypeWhisper", directoryHint: .isDirectory)
         ]
     }
 

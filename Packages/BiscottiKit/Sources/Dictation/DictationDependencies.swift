@@ -134,11 +134,38 @@ public struct TimedText: Equatable, Sendable {
     public var start: TimeInterval
     public var end: TimeInterval
     public var text: String
+    /// The words with their times, for meeting transcripts. Empty when the engine does
+    /// not time words.
+    public var words: [TimedWord]
 
-    public init(start: TimeInterval, end: TimeInterval, text: String) {
+    public init(start: TimeInterval, end: TimeInterval, text: String, words: [TimedWord] = []) {
         self.start = start
         self.end = end
         self.text = text
+        self.words = words
+    }
+
+    /// The passage and its words `offset` seconds later.
+    func shifted(by offset: TimeInterval) -> TimedText {
+        TimedText(
+            start: start + offset,
+            end: end + offset,
+            text: text,
+            words: words.map { TimedWord(text: $0.text, start: $0.start + offset, end: $0.end + offset) }
+        )
+    }
+}
+
+/// One recognized word, in seconds from the start of the audio.
+public struct TimedWord: Equatable, Sendable {
+    public var text: String
+    public var start: TimeInterval
+    public var end: TimeInterval
+
+    public init(text: String, start: TimeInterval, end: TimeInterval) {
+        self.text = text
+        self.start = start
+        self.end = end
     }
 }
 

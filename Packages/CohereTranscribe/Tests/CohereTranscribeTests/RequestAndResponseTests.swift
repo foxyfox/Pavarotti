@@ -51,6 +51,20 @@ struct RequestAndResponseTests {
         #expect(decoded.segments?.first?.end == 1.5)
     }
 
+    @Test("Word times in verbose_json segments decode")
+    func decodesWords() throws {
+        let json = """
+        {"text":"Hallo Welt.","language":"de","segments":[{"id":0,"start":0.48,"end":1.6,"text":"Hallo Welt.",\
+        "words":[{"word":"Hallo","start":0.48,"end":0.56},{"word":"Welt.","start":0.88,"end":1.6}]}]}
+        """
+        let decoded = try ServerTranscription.decode(Data(json.utf8))
+        let words = try #require(decoded.segments?.first?.words)
+        #expect(words == [
+            ServerTranscription.Word(word: "Hallo", start: 0.48, end: 0.56),
+            ServerTranscription.Word(word: "Welt.", start: 0.88, end: 1.6)
+        ])
+    }
+
     @Test("Plain text answers without language or segments decode")
     func decodesMinimalJSON() throws {
         let decoded = try ServerTranscription.decode(Data(#"{"text":"Hi"}"#.utf8))
@@ -92,6 +106,25 @@ struct RequestAndResponseTests {
             cacheDirectory: root
         )
         #expect(!withoutLID.arguments(port: 9000).contains("--lid-backend"))
+        #expect(!withoutLID.arguments(port: 9000).contains("--aligner-model"))
+    }
+
+    @Test("Server arguments force the word aligner when it is installed")
+    func alignerArguments() throws {
+        let root = URL(fileURLWithPath: "/tmp/cohere")
+        let configuration = CrispASRServer.Configuration(
+            executable: root.appending(path: "crispasr"),
+            model: root.appending(path: "model.gguf"),
+            modelID: "m",
+            voiceActivityModel: root.appending(path: "vad.bin"),
+            languageIdentificationModel: root.appending(path: "lid.gguf"),
+            wordAligner: root.appending(path: "aligner.gguf"),
+            cacheDirectory: root
+        )
+        let arguments = configuration.arguments(port: 9000)
+        let index = try #require(arguments.firstIndex(of: "--aligner-model"))
+        #expect(Array(arguments[index ... index + 2]) == ["--aligner-model", "/tmp/cohere/aligner.gguf", "--force-aligner"])
+        #expect(Array(arguments.suffix(4)) == ["--lid-backend", "silero", "--lid-model", "/tmp/cohere/lid.gguf"])
     }
 
     @Test("A free loopback port can be reserved")

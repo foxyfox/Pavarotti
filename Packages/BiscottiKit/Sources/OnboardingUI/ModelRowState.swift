@@ -183,7 +183,8 @@ public extension OnboardingViewModel {
         if downloadFailed, let status = downloadStatus {
             return .failed(message: status)
         }
-        return .idle(sizeCaption: "~1.5 GB")
+        // Pavarotti: the speaker model (~33 MB) and the word aligner (~392 MB).
+        return .idle(sizeCaption: "~430 MB")
     }
 
     /// Computes the view-state for the language model row.
