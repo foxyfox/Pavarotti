@@ -240,6 +240,7 @@ let package = Package(
                 "Calendar",
                 "DataStore",
                 "DesignSystem",
+                "Dictation",
                 "Formatting",
                 "ImportExport",
                 "Intelligence",

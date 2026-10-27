@@ -34,6 +34,14 @@ import Foundation
         reply: @escaping @Sendable (Error?) -> Void
     )
 
+    /// Pavarotti: download only the speaker model. Meetings are transcribed by Cohere in
+    /// the app, so the worker no longer needs WhisperKit.
+    ///
+    /// - Parameter reply: Callback with nil on success, or an error on failure.
+    func ensureSpeakerModelsDownloaded(
+        reply: @escaping @Sendable (Error?) -> Void
+    )
+
     /// Explicitly unload all models from memory.
     func unloadModels(
         reply: @escaping @Sendable () -> Void

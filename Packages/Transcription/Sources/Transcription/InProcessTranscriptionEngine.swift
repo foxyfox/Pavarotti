@@ -245,16 +245,21 @@ private extension InProcessTranscriptionEngine {
         }
     }
 
+    /// Pavarotti: `methodID` and `strategy` override the method's own for transcripts made
+    /// elsewhere.
     func assembleResult(
         sttResults: [TranscriptionResult],
         diarization: DiarizationResult,
         audioDuration: TimeInterval,
-        startTime: CFAbsoluteTime
+        startTime: CFAbsoluteTime,
+        methodID: String? = nil,
+        strategy override: SpeakerInfoStrategy? = nil
     ) -> TranscriptResult {
-        let strategy: SpeakerInfoStrategy = switch resolvedSettings.diarizationStrategy {
+        let configured: SpeakerInfoStrategy = switch resolvedSettings.diarizationStrategy {
         case .subsegment: .subsegment
         case .segment: .segment
         }
+        let strategy = override ?? configured
 
         let speakerSegmentGroups = diarization.addSpeakerInfo(
             to: sttResults,
@@ -267,7 +272,7 @@ private extension InProcessTranscriptionEngine {
         let spans = SpeakerDurations.spans(from: diarization)
 
         let rawResult = TranscriptResult(
-            transcriptionMethodId: method.id,
+            transcriptionMethodId: methodID ?? method.id,
             language: language,
             speakerCount: diarization.speakerCount,
             segments: segments,
@@ -400,5 +405,54 @@ private extension InProcessTranscriptionEngine {
     /// Build a SpeakerKit (Pyannote) configuration anchored at the shared cache.
     func makeSpeakerConfig(download: Bool, load: Bool) -> PyannoteConfig {
         SpeakerKitConfigFactory.make(download: download, load: load)
+    }
+}
+
+// MARK: - Pavarotti: transcripts made elsewhere
+
+public extension InProcessTranscriptionEngine {
+    func processAudio(
+        micPath: String,
+        systemPath: String,
+        transcript: ProvidedTranscript
+    ) async throws -> TranscriptResult {
+        Self.log.debug("processAudio(transcript:): begin")
+        let startTime = CFAbsoluteTimeGetCurrent()
+
+        let mergeResult = try loadAndMergeAudio(micPath: micPath, systemPath: systemPath)
+
+        await statusMachine.transition(to: .running)
+
+        let diarization = try await runDiarization(audioArray: mergeResult.samples)
+
+        if resolvedSettings.sequentialLoading { await unloadSpeakerKit() }
+
+        // One segment per sentence, matched as a whole: the sentence gets the speaker
+        // turn it overlaps most.
+        let result = assembleResult(
+            sttResults: [transcript.transcriptionResult()],
+            diarization: diarization,
+            audioDuration: mergeResult.duration,
+            startTime: startTime,
+            methodID: transcript.methodID,
+            strategy: .segment
+        )
+
+        await statusMachine.transition(to: .ready)
+        Self.log.debug("processAudio(transcript:): complete")
+        return result
+    }
+
+    func ensureSpeakerModelsDownloaded(
+        status: @escaping @Sendable (String) -> Void
+    ) async throws {
+        Self.log.debug("ensureSpeakerModelsDownloaded: begin")
+        await statusMachine.transition(to: .downloading(progress: 0.0))
+        try await downloadSpeakerKitIfNeeded(status: status)
+        Self.log.debug("ensureSpeakerModelsDownloaded: complete")
+    }
+
+    func speakerModelsPresent() async -> Bool {
+        Self.speakerKitModelsPresent()
     }
 }

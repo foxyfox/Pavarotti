@@ -56,11 +56,20 @@ final class TranscriberService: NSObject, TranscriberServiceProtocol, @unchecked
         let engine = engine
         Task {
             do {
-                let result = try await engine.processAudio(
-                    micPath: request.micPath,
-                    systemPath: request.systemPath,
-                    customVocabulary: request.customVocabulary
-                )
+                // Pavarotti: with a Cohere transcript from the app only diarization runs.
+                let result: TranscriptResult = if let transcript = request.transcript {
+                    try await engine.processAudio(
+                        micPath: request.micPath,
+                        systemPath: request.systemPath,
+                        transcript: transcript
+                    )
+                } else {
+                    try await engine.processAudio(
+                        micPath: request.micPath,
+                        systemPath: request.systemPath,
+                        customVocabulary: request.customVocabulary
+                    )
+                }
                 let data = try JSONEncoder().encode(result)
                 reply(data, nil)
             } catch {
@@ -83,6 +92,25 @@ final class TranscriberService: NSObject, TranscriberServiceProtocol, @unchecked
         Task {
             do {
                 try await engine.ensureModelsDownloaded { status in
+                    statusBox.value?.reportDownloadStatus(status)
+                }
+                reply(nil)
+            } catch {
+                reply(error)
+            }
+        }
+    }
+
+    func ensureSpeakerModelsDownloaded(
+        reply: @escaping @Sendable ((any Error)?) -> Void
+    ) {
+        let engine = engine
+        let statusBox = UncheckedSendableBox(
+            connection?.remoteObjectProxy as? TranscriberStatusReporting
+        )
+        Task {
+            do {
+                try await engine.ensureSpeakerModelsDownloaded { status in
                     statusBox.value?.reportDownloadStatus(status)
                 }
                 reply(nil)

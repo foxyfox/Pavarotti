@@ -47,4 +47,41 @@ public protocol TranscriptionEngine: Sendable {
 
     /// The current model lifecycle status.
     func status() async -> ModelStatus
+
+    /// Pavarotti: diarizes the merged audio and gives each sentence of a transcript made
+    /// elsewhere (Cohere Transcribe in the app) a speaker. WhisperKit is never loaded.
+    func processAudio(
+        micPath: String,
+        systemPath: String,
+        transcript: ProvidedTranscript
+    ) async throws -> TranscriptResult
+
+    /// Pavarotti: downloads only the speaker model, which is all
+    /// ``processAudio(micPath:systemPath:transcript:)`` needs.
+    func ensureSpeakerModelsDownloaded(
+        status: @escaping @Sendable (String) -> Void
+    ) async throws
+
+    /// Pavarotti: whether the speaker model is on disk. Read-only like ``modelsPresent()``.
+    func speakerModelsPresent() async -> Bool
+}
+
+public extension TranscriptionEngine {
+    func processAudio(
+        micPath _: String,
+        systemPath _: String,
+        transcript _: ProvidedTranscript
+    ) async throws -> TranscriptResult {
+        throw TranscriptionError.transcriptionFailed("This engine cannot use a transcript made elsewhere.")
+    }
+
+    func ensureSpeakerModelsDownloaded(
+        status: @escaping @Sendable (String) -> Void
+    ) async throws {
+        try await ensureModelsDownloaded(status: status)
+    }
+
+    func speakerModelsPresent() async -> Bool {
+        await modelsPresent()
+    }
 }

@@ -10,10 +10,19 @@ public struct XPCProcessRequest: Codable {
     public let micPath: String
     public let systemPath: String
     public let customVocabulary: [String]
+    /// Pavarotti: a transcript made by Cohere in the app. When set, the worker only
+    /// diarizes and never loads WhisperKit.
+    public let transcript: ProvidedTranscript?
 
-    public init(micPath: String, systemPath: String, customVocabulary: [String]) {
+    public init(
+        micPath: String,
+        systemPath: String,
+        customVocabulary: [String],
+        transcript: ProvidedTranscript? = nil
+    ) {
         self.micPath = micPath
         self.systemPath = systemPath
         self.customVocabulary = customVocabulary
+        self.transcript = transcript
     }
 }

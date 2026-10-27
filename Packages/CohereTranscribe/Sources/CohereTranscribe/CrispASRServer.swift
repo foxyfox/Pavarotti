@@ -16,6 +16,9 @@ public actor CrispASRServer {
         public let voiceActivityModel: URL
         /// Silero language ID. Without it the server cannot detect the language.
         public let languageIdentificationModel: URL?
+        /// CTC aligner for word times (see ``CohereAssetCatalog/wordAligner``). Without it
+        /// the server spreads each chunk's words evenly over the chunk.
+        public let wordAligner: URL?
         public let cacheDirectory: URL
         public let threads: Int
 
@@ -25,6 +28,7 @@ public actor CrispASRServer {
             modelID: String,
             voiceActivityModel: URL,
             languageIdentificationModel: URL?,
+            wordAligner: URL? = nil,
             cacheDirectory: URL,
             threads: Int = Configuration.recommendedThreads
         ) {
@@ -33,6 +37,7 @@ public actor CrispASRServer {
             self.modelID = modelID
             self.voiceActivityModel = voiceActivityModel
             self.languageIdentificationModel = languageIdentificationModel
+            self.wordAligner = wordAligner
             self.cacheDirectory = cacheDirectory
             self.threads = threads
         }
@@ -58,6 +63,10 @@ public actor CrispASRServer {
                 "--threads", String(threads),
                 "--gpu-backend", "metal"
             ]
+            if let wordAligner {
+                // Cohere has rough word times of its own; the aligner replaces them.
+                arguments += ["--aligner-model", wordAligner.path, "--force-aligner"]
+            }
             if let languageIdentificationModel {
                 arguments += ["--lid-backend", "silero", "--lid-model", languageIdentificationModel.path]
             }

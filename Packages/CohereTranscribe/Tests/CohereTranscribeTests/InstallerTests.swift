@@ -215,6 +215,17 @@ struct AssetCatalogTests {
         ])
     }
 
+    @Test("The word aligner is pinned and optional")
+    func wordAligner() {
+        let aligner = CohereAssetCatalog.wordAligner
+        #expect(aligner.size == 392_167_040)
+        #expect(aligner.sha256.count == 64)
+        #expect(aligner.source.absoluteString.hasSuffix("canary-ctc-aligner-q4_k.gguf"))
+        for model in CohereModel.all {
+            #expect(!CohereAssetCatalog.assets(for: model).contains(aligner))
+        }
+    }
+
     @Test("Models are found by ID")
     func lookup() {
         #expect(CohereModel.model(id: "cohere-transcribe-03-2026-q5_0") == .fast)

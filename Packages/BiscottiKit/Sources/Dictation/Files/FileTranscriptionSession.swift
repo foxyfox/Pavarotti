@@ -110,15 +110,13 @@ public final class FileTranscriptionSession {
         let expectedSamples = max(1, duration * Double(sampleRate))
         var chunker = AudioChunker(sampleRate: sampleRate)
         var passages: [TimedText] = []
-        var languages: [String: TimeInterval] = [:]
+        var languages = LanguageTally()
         var readSamples = 0
 
         func add(_ chunk: AudioChunker.Chunk) async throws {
             let result = try await transcribe(chunk, settings: settings)
             passages += result.passages
-            if let language = result.language {
-                languages[language, default: 0] += result.passages.reduce(0) { $0 + max(0, $1.end - $1.start) }
-            }
+            languages.add(result)
             readSamples = chunk.offset + chunk.samples.count
             report(Double(readSamples) / expectedSamples, file: url, run: current)
         }
@@ -136,7 +134,7 @@ public final class FileTranscriptionSession {
         return FileTranscript(
             source: url,
             duration: max(duration, Double(readSamples) / Double(sampleRate)),
-            language: languages.max { $0.value < $1.value }?.key,
+            language: languages.mainLanguage,
             passages: passages,
             createdAt: now()
         )
@@ -145,24 +143,18 @@ public final class FileTranscriptionSession {
     /// The passages of one piece, in seconds from the start of the file, with the
     /// dictionary applied. Digital silence is skipped without asking the server.
     private func transcribe(_ chunk: AudioChunker.Chunk, settings: DictationSettings) async throws -> TimedTranscription {
-        guard !DictationAudio.isSilent(chunk.samples) else {
-            return TimedTranscription(language: nil, passages: [])
-        }
-        let sampleRate = DictationAudio.sampleRate
-        let result = try await controller.dependencies.engine.transcribeTimed(
-            samples: chunk.samples,
-            sampleRate: sampleRate,
+        let result = try await controller.dependencies.engine.transcribe(
+            chunk,
+            sampleRate: DictationAudio.sampleRate,
             language: settings.language,
             modelID: settings.modelID
         )
-        try Task.checkCancellation()
-        let offset = Double(chunk.offset) / Double(sampleRate)
         let entries = controller.dependencies.dictionary.entries
         let passages = result.passages.compactMap { passage -> TimedText? in
             let heard = passage.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !heard.isEmpty else { return nil }
             let text = DictionaryReplacer.apply(entries, to: heard).text
-            return TimedText(start: passage.start + offset, end: passage.end + offset, text: text)
+            return TimedText(start: passage.start, end: passage.end, text: text)
         }
         return TimedTranscription(language: result.language, passages: passages)
     }

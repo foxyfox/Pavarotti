@@ -54,12 +54,29 @@ final class XPCEngineAdapter: TranscriptionEngine, @unchecked Sendable {
         systemPath: String,
         customVocabulary: [String]
     ) async throws -> TranscriptResult {
-        let proxy = try requireProxy()
-        let request = XPCProcessRequest(
+        try await send(XPCProcessRequest(
             micPath: micPath,
             systemPath: systemPath,
             customVocabulary: customVocabulary
-        )
+        ))
+    }
+
+    func processAudio(
+        micPath: String,
+        systemPath: String,
+        transcript: ProvidedTranscript
+    ) async throws -> TranscriptResult {
+        try await send(XPCProcessRequest(
+            micPath: micPath,
+            systemPath: systemPath,
+            customVocabulary: [],
+            transcript: transcript
+        ))
+    }
+
+    /// Sends one processing request and decodes the worker's `TranscriptResult`.
+    private func send(_ request: XPCProcessRequest) async throws -> TranscriptResult {
+        let proxy = try requireProxy()
         let requestData = try encodeRequest(request)
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -90,6 +107,28 @@ final class XPCEngineAdapter: TranscriptionEngine, @unchecked Sendable {
                 }
             }
         }
+    }
+
+    func ensureSpeakerModelsDownloaded(
+        status _: @escaping @Sendable (String) -> Void
+    ) async throws {
+        // Status travels over the reverse channel, as for `ensureModelsDownloaded`.
+        let proxy = try requireProxy()
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            proxy.ensureSpeakerModelsDownloaded { error in
+                if let error {
+                    continuation.resume(throwing: self.mapError(error))
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    func speakerModelsPresent() async -> Bool {
+        // Model files live at a shared path, so the client checks without the worker.
+        InProcessTranscriptionEngine.speakerKitModelsPresent()
     }
 
     func unloadModels() async {

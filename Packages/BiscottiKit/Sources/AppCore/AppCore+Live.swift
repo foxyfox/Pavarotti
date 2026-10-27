@@ -149,7 +149,8 @@ public extension AppCore {
         let transcriber = Transcriber(backend: .hosted(serviceName: serviceName))
         return TranscriptionService(
             store: store,
-            engine: LiveTranscriberAdapter(transcriber: transcriber),
+            // Pavarotti: Cohere transcribes, the worker only finds the speakers.
+            engine: CohereMeetingTranscriber(transcriber: transcriber),
             vocabulary: VocabularyService(store: store)
         )
     }

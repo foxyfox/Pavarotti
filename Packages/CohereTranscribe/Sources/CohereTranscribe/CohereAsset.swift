@@ -97,6 +97,22 @@ public enum CohereAssetCatalog {
         sha256: "ed161165bb6fabae895f8837761b57bde50ede273ec83f6ad37ba982ce3e54da"
     )
 
+    /// Canary CTC forced aligner. With it the server times every word from the audio
+    /// instead of spreading the words evenly over a chunk, so meeting sentences can be
+    /// matched to speakers. Optional: dictation works without it. Same pin as the
+    /// TypeWhisper fork, stored under the same relative path as there so its copy is reused.
+    public static let wordAligner = CohereAsset(
+        name: "Canary CTC aligner",
+        source: huggingFaceURL(
+            repository: "cstr/canary-ctc-aligner-GGUF",
+            revision: "2b22dc9aff585bc8368a5228173c8afe22c155b7",
+            file: "canary-ctc-aligner-q4_k.gguf"
+        ),
+        relativePath: "MeetingModels/canary-ctc-aligner-q4_k.gguf",
+        size: 392_167_040,
+        sha256: "d16dbf18f9a66f59c0ceb61b204caca5dda21742d6e9dc304c9d0518c81ee38c"
+    )
+
     static let runtimeExecutablePath = "Runtime/crispasr-macos/crispasr"
 
     /// Everything a model needs to run, the model itself first.

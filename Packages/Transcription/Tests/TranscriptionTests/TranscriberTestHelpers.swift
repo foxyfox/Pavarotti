@@ -247,6 +247,23 @@ final class MockTranscriberService: TranscriberServiceProtocol, @unchecked Senda
         reply(ensureModelsError)
     }
 
+    /// Count of `ensureSpeakerModelsDownloaded` calls.
+    private var _speakerDownloadCallCount = 0
+    var speakerDownloadCallCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return _speakerDownloadCallCount
+    }
+
+    func ensureSpeakerModelsDownloaded(
+        reply: @escaping @Sendable (Error?) -> Void
+    ) {
+        lock.lock()
+        _speakerDownloadCallCount += 1
+        lock.unlock()
+        reply(ensureModelsError)
+    }
+
     func unloadModels(reply: @escaping @Sendable () -> Void) {
         lock.lock()
         _unloadCallCount += 1
