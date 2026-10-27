@@ -84,6 +84,6 @@ struct FileTranscriptTests {
 
     @Test("YAML values escape quotes, backslashes and control characters")
     func yamlQuoting() {
-        #expect(FileTranscript.yamlQuoted("a\"b\\c\nd\u{0007}e\u{2028}") == #""a\"b\\c\nd\u0007e ""#)
+        #expect(FileTranscript.yamlQuoted("a\"b\\c\nd\u{0007}e\u{2028}") == #""a\"b\\c\nd\u0007e\u2028""#)
     }
 }
