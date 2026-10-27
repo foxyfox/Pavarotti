@@ -74,7 +74,7 @@ private extension KeyedDecodingContainer {
 /// Loads and saves ``DictationSettings`` in user defaults.
 @MainActor
 public final class DictationSettingsStore {
-    public static let key = "pavarotti.dictation.settings"
+    public nonisolated static let key = "pavarotti.dictation.settings"
     private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
@@ -82,12 +82,7 @@ public final class DictationSettingsStore {
     }
 
     public func load() -> DictationSettings {
-        guard let data = defaults.data(forKey: Self.key),
-              let settings = try? JSONDecoder().decode(DictationSettings.self, from: data)
-        else {
-            return DictationSettings()
-        }
-        return settings
+        Self.load(from: defaults)
     }
 
     public func save(_ settings: DictationSettings) {
@@ -97,7 +92,17 @@ public final class DictationSettingsStore {
 
     /// The Core Audio UID of the chosen microphone, `nil` for the system default. Meeting
     /// recordings use the same microphone and read it from their audio thread.
-    public static func chosenMicrophoneUID(defaults: UserDefaults = .standard) -> String? {
-        DictationSettingsStore(defaults: defaults).load().microphone?.id
+    public nonisolated static func chosenMicrophoneUID(defaults: UserDefaults = .standard) -> String? {
+        load(from: defaults).microphone?.id
+    }
+
+    /// The saved settings, readable off the main actor; defaults when none are saved.
+    nonisolated static func load(from defaults: UserDefaults) -> DictationSettings {
+        guard let data = defaults.data(forKey: key),
+              let settings = try? JSONDecoder().decode(DictationSettings.self, from: data)
+        else {
+            return DictationSettings()
+        }
+        return settings
     }
 }

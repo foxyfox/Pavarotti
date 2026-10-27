@@ -66,6 +66,7 @@ struct DictationSettingsTests {
     }
 
     @Test("meeting recordings read the chosen microphone")
+    @MainActor
     func chosenMicrophoneUID() throws {
         let suite = "pavarotti.tests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
