@@ -7,6 +7,7 @@ import Synchronization
 final class FakeAudioSource: DictationAudioSource {
     var samples: [Float] = []
     var startError: (any Error)?
+    var level: Float = 0
     private(set) var startCount = 0
     private(set) var cancelCount = 0
     /// The microphone each start asked for, `nil` for the system default.

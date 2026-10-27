@@ -3,15 +3,27 @@ import Dictation
 import Observation
 import SwiftUI
 
-/// A small floating pill at the bottom of the screen that shows when dictation is
-/// listening, transcribing or failed, and briefly what the dictionary learned. It
-/// never takes focus or clicks.
+/// The recording bubble: a dark bubble at the bottom of the screen with the active window
+/// that shows a live waveform while dictation listens, then "Transcribing", a failure, or
+/// briefly what the dictionary learned. It never takes focus or clicks, and screen sharing
+/// does not show it.
 @MainActor
 public final class DictationIndicator {
     private let controller: DictationController
+    private let meter = DictationLevelMeter()
     private var panel: NSPanel?
+    private var lastPhase = DictationController.Phase.idle
+    private var meterTask: Task<Void, Never>?
+    private var hideTask: Task<Void, Never>?
 
-    private static let size = NSSize(width: 420, height: 64)
+    /// Room for the widest bubble; the panel itself is transparent.
+    private static let size = NSSize(width: 480, height: 120)
+    /// Distance from the bottom of the screen's visible area.
+    private static let bottomMargin: CGFloat = 28
+    /// How often the waveform reads the microphone level.
+    private static let meterInterval = Duration.milliseconds(50)
+    /// Time for the bubble to fade out before the panel goes away.
+    private static let fadeOut = Duration.milliseconds(250)
 
     public init(controller: DictationController) {
         self.controller = controller
@@ -19,32 +31,66 @@ public final class DictationIndicator {
 
     /// Starts following the controller.
     public func start() {
-        observePhase()
+        observe()
     }
 
-    private func observePhase() {
-        let isVisible = withObservationTracking {
-            controller.phase != .idle || controller.notice != nil
+    private func observe() {
+        let (phase, notice) = withObservationTracking {
+            (controller.phase, controller.notice)
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
-                self?.observePhase()
+                self?.observe()
             }
         }
-        show(isVisible)
+        follow(phase)
+        show(phase != .idle || notice != nil)
+    }
+
+    /// Runs the waveform while listening. It keeps its last levels for "Transcribing".
+    private func follow(_ phase: DictationController.Phase) {
+        defer { lastPhase = phase }
+        guard phase != lastPhase else { return }
+        if phase == .listening {
+            meter.start(at: .now)
+            meterTask?.cancel()
+            meterTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    guard let self else { return }
+                    meter.record(controller.inputLevel, at: .now)
+                    try? await Task.sleep(for: Self.meterInterval)
+                }
+            }
+        } else if lastPhase == .listening {
+            meterTask?.cancel()
+            meterTask = nil
+        }
     }
 
     private func show(_ isVisible: Bool) {
+        hideTask?.cancel()
         guard isVisible else {
-            panel?.orderOut(nil)
+            // The bubble fades out in SwiftUI first.
+            hideTask = Task { [weak self] in
+                try? await Task.sleep(for: Self.fadeOut)
+                guard !Task.isCancelled else { return }
+                self?.panel?.orderOut(nil)
+            }
             return
         }
         let panel = panel ?? makePanel()
         self.panel = panel
-        if let screen = NSScreen.main {
-            let frame = screen.visibleFrame
-            panel.setFrameOrigin(NSPoint(x: frame.midX - Self.size.width / 2, y: frame.minY + 40))
+        guard !panel.isVisible else { return }
+        // Placed when it appears, so it does not jump while you talk.
+        let screen = FrontmostWindowScreen.ofFrontmostApplication() ?? Self.screenWithMouse() ?? NSScreen.main
+        if let frame = screen?.visibleFrame {
+            panel.setFrameOrigin(NSPoint(x: frame.midX - Self.size.width / 2, y: frame.minY + Self.bottomMargin))
         }
         panel.orderFrontRegardless()
+    }
+
+    private static func screenWithMouse() -> NSScreen? {
+        let mouse = NSEvent.mouseLocation
+        return NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
     }
 
     private func makePanel() -> NSPanel {
@@ -61,55 +107,10 @@ public final class DictationIndicator {
         panel.hasShadow = false
         panel.ignoresMouseEvents = true
         panel.hidesOnDeactivate = false
+        // Keeps the bubble out of screen sharing and recordings of a meeting.
+        panel.sharingType = .none
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-        panel.contentView = NSHostingView(rootView: DictationIndicatorView(controller: controller))
+        panel.contentView = NSHostingView(rootView: DictationBubbleView(controller: controller, meter: meter))
         return panel
-    }
-}
-
-/// The pill itself. Reads the phase straight from the controller.
-struct DictationIndicatorView: View {
-    let controller: DictationController
-
-    var body: some View {
-        HStack(spacing: 8) {
-            icon
-            Text(message)
-                .font(.system(size: 13, weight: .medium))
-                .lineLimit(2)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 9)
-        .background(.regularMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(.separator, lineWidth: 0.5))
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    @ViewBuilder
-    private var icon: some View {
-        switch controller.phase {
-        case .listening:
-            Image(systemName: "mic.fill")
-                .foregroundStyle(.red)
-                .symbolEffect(.pulse)
-        case .transcribing:
-            ProgressView()
-                .controlSize(.small)
-        case .failed:
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange)
-        case .idle:
-            Image(systemName: "character.book.closed.fill")
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var message: String {
-        switch controller.phase {
-        case .listening: "Listening\u{2026}"
-        case .transcribing: "Transcribing\u{2026}"
-        case let .failed(text): text
-        case .idle: controller.notice ?? ""
-        }
     }
 }

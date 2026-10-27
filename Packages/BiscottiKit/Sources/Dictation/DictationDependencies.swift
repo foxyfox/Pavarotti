@@ -41,6 +41,9 @@ public protocol DictationAudioSource: AnyObject {
     func stop() -> [Float]
     /// Stops recording and drops the audio.
     func cancel()
+    /// The loudness of the latest audio, from 0 to 1 (see ``DictationAudio/meterLevel(rms:)``),
+    /// for the recording bubble. 0 while not recording. Read from the main actor.
+    var level: Float { get }
 }
 
 /// Constants shared by recorder and engine.
@@ -55,6 +58,21 @@ public enum DictationAudio {
     /// Whether `samples` hold nothing but silence.
     public static func isSilent(_ samples: [Float]) -> Bool {
         !samples.contains { abs($0) >= silenceThreshold }
+    }
+
+    /// The loudness of a buffer with the root mean square `rms`, for the waveform: 0 at
+    /// -55 dBFS and below (a quiet room), 1 at -10 dBFS and above (speaking up close).
+    public static func meterLevel(rms: Float) -> Float {
+        guard rms > 0 else { return 0 }
+        let decibels = 20 * log10(rms)
+        return min(1, max(0, (decibels + 55) / 45))
+    }
+
+    /// The root mean square of `samples`, 0 for none.
+    public static func rms(_ samples: [Float]) -> Float {
+        guard !samples.isEmpty else { return 0 }
+        let sum = samples.reduce(Float(0)) { $0 + $1 * $1 }
+        return (sum / Float(samples.count)).squareRoot()
     }
 }
 
