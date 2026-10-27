@@ -40,6 +40,8 @@ public struct DictationSettings: Codable, Equatable, Sendable {
     public var learnsFromCorrections = true
     /// The input device to record from. `nil` follows the system's default input.
     public var microphone: MicrophoneDevice?
+    /// How the recording bubble looks and where it appears.
+    public var bubble = BubbleAppearance()
 
     public init() {}
 
@@ -62,10 +64,12 @@ public struct DictationSettings: Codable, Equatable, Sendable {
         restoresClipboard = container.value(.restoresClipboard, default: defaults.restoresClipboard)
         learnsFromCorrections = container.value(.learnsFromCorrections, default: defaults.learnsFromCorrections)
         microphone = container.value(.microphone, default: defaults.microphone)
+        bubble = container.value(.bubble, default: defaults.bubble)
     }
 }
 
-private extension KeyedDecodingContainer {
+extension KeyedDecodingContainer {
+    /// The decoded value for `key`, or `fallback` when it is missing or unreadable.
     func value<Value: Decodable>(_ key: Key, default fallback: Value) -> Value {
         (try? decodeIfPresent(Value.self, forKey: key)) ?? fallback
     }
