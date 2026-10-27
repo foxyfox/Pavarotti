@@ -92,7 +92,7 @@ public struct FileTranscript: Equatable, Sendable {
 
     /// "mm:ss" with at least two minute digits ("75:12" after an hour); seconds are
     /// rounded down, negative or invalid times give "00:00".
-    static func timestamp(_ seconds: TimeInterval) -> String {
+    public static func timestamp(_ seconds: TimeInterval) -> String {
         let total = seconds.isFinite ? max(0, Int(seconds.rounded(.down))) : 0
         return String(format: "%02ld:%02ld", total / 60, total % 60)
     }
