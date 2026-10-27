@@ -238,6 +238,8 @@ public final class DictationController {
             }
             let text = dependencies.dictionary.apply(to: heard)
             lastTranscript = text
+            // Kept before pasting, so text that does not arrive can be copied again.
+            dependencies.history.record(text)
             switch await dependencies.inserter.insert(text, restoringClipboard: snapshot.restoresClipboard) {
             case .pasted:
                 playCue(snapshot.doneSound)

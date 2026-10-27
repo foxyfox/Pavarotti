@@ -137,6 +137,7 @@ public struct DictationDependencies {
     public var dictionary: PersonalDictionary
     public var corrections: any CorrectionWatching
     public var microphones: any MicrophoneProviding
+    public var history: DictationHistory
 
     public init(
         audio: any DictationAudioSource,
@@ -148,7 +149,8 @@ public struct DictationDependencies {
         soundLibrary: SoundLibrary,
         dictionary: PersonalDictionary,
         corrections: any CorrectionWatching,
-        microphones: any MicrophoneProviding
+        microphones: any MicrophoneProviding,
+        history: DictationHistory
     ) {
         self.audio = audio
         self.engine = engine
@@ -160,5 +162,6 @@ public struct DictationDependencies {
         self.dictionary = dictionary
         self.corrections = corrections
         self.microphones = microphones
+        self.history = history
     }
 }
