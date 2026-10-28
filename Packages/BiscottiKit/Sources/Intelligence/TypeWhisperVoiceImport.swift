@@ -28,7 +28,8 @@ public enum TypeWhisperVoiceImport {
         public var foundFile = true
         public var people: [String] = []
         public var ownVoice = false
-        /// Whether the calendar marks someone as the user, who gets the own voice.
+        /// Whether the calendar marks someone as the user, or a speaker the user named
+        /// sounds like the own voice: that person gets it.
         public var userKnown = false
         public var comparisons: [Comparison] = []
 
@@ -37,7 +38,7 @@ public enum TypeWhisperVoiceImport {
             guard !people.isEmpty || ownVoice else { return "TypeWhisper\u{2019}s voice file holds no usable voice." }
             var parts = [tookOver]
             if ownVoice, !userKnown {
-                parts.append("Your own voice counts once the calendar shows which attendee you are.")
+                parts.append("Your own voice counts once you name yourself as a speaker in a meeting.")
             }
             if comparisons.isEmpty {
                 parts.append("No speaker is named in Pavarotti yet to compare the voices with.")
@@ -99,9 +100,14 @@ public enum TypeWhisperVoiceImport {
             outcome.ownVoice = true
         }
         try voices.save(imported)
-        let user = try await store.mostFrequentCurrentUserPersonID()
+        let named = try await store.confirmedVoiceprints(kind: .raw)
+        var user = try await store.mostFrequentCurrentUserPersonID()
+        if user == nil, let own = imported.first(where: { $0.personID == nil }) {
+            let pairs = named.flatMap { personID, vectors in vectors.map { (personID: personID, vector: $0) } }
+            user = ImportedVoiceCorpus.ownVoicePerson(own, voices: imported, named: pairs)
+        }
         outcome.userKnown = user != nil
-        outcome.comparisons = try await compare(imported, user: user, store: store)
+        outcome.comparisons = compare(imported, user: user, named: named)
         return outcome
     }
 
@@ -114,9 +120,8 @@ public enum TypeWhisperVoiceImport {
         return try await store.findOrCreatePerson(name: name, email: nil)
     }
 
-    private static func compare(_ voices: [ImportedVoice], user: UUID?, store: DataStore) async throws -> [Comparison] {
-        let named = try await store.confirmedVoiceprints(kind: .raw)
-        return voices.compactMap { voice in
+    private static func compare(_ voices: [ImportedVoice], user: UUID?, named: [UUID: [[Float]]]) -> [Comparison] {
+        voices.compactMap { voice in
             guard let personID = voice.personID ?? user,
                   let best = named[personID]?.compactMap({ cosine(voice.vector, $0) }).max()
             else { return nil }

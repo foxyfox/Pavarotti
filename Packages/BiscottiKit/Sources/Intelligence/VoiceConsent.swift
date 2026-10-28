@@ -37,12 +37,14 @@ public final class VoiceConsentStore: @unchecked Sendable {
 
 // TODO: Learn the user's own voice from dictations too, as the TypeWhisper fork did (plan
 // step 11). That needs the speaker model to embed a dictation clip, tested on the Mac; until
-// then the user names themselves once and the calendar marks them.
+// then the user names themselves once, and the calendar or the voice from TypeWhisper
+// marks them.
 
 /// Pavarotti: keeps voice matching to the people it may recognize.
 enum VoiceConsentFilter {
     /// The people whose voices may name speakers: those with a consent note and the
-    /// user, as the calendar marks them.
+    /// user, as the calendar marks them. The user found by the voice from TypeWhisper
+    /// joins in `VoiceprintEvidence`.
     static func allowedPersonIDs(consent: VoiceConsentStore, store: DataStore) async -> Set<UUID> {
         let user = await (try? store.read { store in
             try Set(store.fetchAllSnapshots().compactMap(\.currentUserPersonID))
