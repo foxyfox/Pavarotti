@@ -72,7 +72,7 @@ struct Transcribe: AsyncParsableCommand {
 
     @OptionGroup var options: ModelOptions
 
-    @Option(help: "auto, de or en")
+    @Option(help: "auto, or a language code the model knows, such as de or en")
     var language = TranscriptionLanguage.automatic.rawValue
 
     @Flag(help: "Print segments with timestamps.")
@@ -82,11 +82,12 @@ struct Transcribe: AsyncParsableCommand {
     var file: String
 
     func run() async throws {
-        guard let requested = TranscriptionLanguage(rawValue: language) else {
-            throw ValidationError("Language must be auto, de or en")
+        let model = try options.resolvedModel()
+        guard let requested = TranscriptionLanguage(rawValue: language), model.supports(requested) else {
+            throw ValidationError("Language must be auto or one of: \(model.languages.joined(separator: ", "))")
         }
         let url = URL(fileURLWithPath: (file as NSString).expandingTildeInPath)
-        let transcriber = try CohereTranscriber(model: options.resolvedModel())
+        let transcriber = CohereTranscriber(model: model)
 
         let warmStart = ContinuousClock.now
         try await transcriber.warmUp()
