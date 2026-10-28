@@ -128,8 +128,10 @@ struct BubbleMetrics {
 }
 
 /// The bubble's material: Liquid Glass (a thin material before macOS 26), frosted, or dark.
-/// Text in the bubble uses the primary color, so it follows light and dark mode; the dark
-/// style always draws in dark mode.
+/// Liquid Glass is the system's clear variant, which lets what lies behind the bubble show
+/// through; the regular variant looked almost like the frosted style. Text in the bubble
+/// uses the primary color, so it follows light and dark mode; the dark style always draws
+/// in dark mode.
 private struct BubbleBackground: ViewModifier {
     let style: BubbleAppearance.Style
     let cornerRadius: CGFloat
@@ -142,7 +144,7 @@ private struct BubbleBackground: ViewModifier {
         switch style {
         case .glass:
             if #available(macOS 26.0, *) {
-                content.glassEffect(.regular, in: shape)
+                content.glassEffect(.clear, in: shape)
             } else {
                 content
                     .background(.ultraThinMaterial, in: shape)
