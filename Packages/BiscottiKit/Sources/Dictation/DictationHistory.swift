@@ -38,8 +38,8 @@ public struct DictationHistoryEntry: Codable, Equatable, Identifiable, Sendable 
 /// Stored as JSON in `~/Library/Application Support/Pavarotti/dictation-history.json`.
 @MainActor @Observable
 public final class DictationHistory {
-    /// How many dictations are kept.
-    public static let limit = 100
+    /// How many dictations are kept; older ones are discarded.
+    public static let limit = 10
 
     public private(set) var entries: [DictationHistoryEntry] = []
     private let fileURL: URL?
@@ -50,6 +50,11 @@ public final class DictationHistory {
     public init(fileURL: URL?) {
         self.fileURL = fileURL
         entries = Self.load(from: fileURL)
+        // A history saved under a higher limit loses its older dictations for good.
+        if entries.count > Self.limit {
+            entries.removeLast(entries.count - Self.limit)
+            save()
+        }
     }
 
     public static var standardFileURL: URL {
