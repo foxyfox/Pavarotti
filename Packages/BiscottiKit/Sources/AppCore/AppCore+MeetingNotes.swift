@@ -18,8 +18,6 @@ public extension AppCore {
         await importTypeWhisperNotesSetup(force: false)
     }
 
-    // TODO: Also rewrite the note when speakers are renamed or the summary is edited
-    // by hand; today only an AI run updates it.
     /// Writes or rewrites the note of `meetingID` in the background.
     func writeMeetingNote(meetingID: UUID) {
         let failure: String? = if case let .failed(message) = intelligence.jobs[meetingID] {
@@ -28,9 +26,17 @@ public extension AppCore {
             nil
         }
         let store = store
-        Task.detached(priority: .utility) {
+        MeetingNoteQueue.shared.enqueue {
             await AppCore.writeNote(meetingID: meetingID, failure: failure, store: store)
         }
+    }
+
+    /// Rewrites the note of `meetingID` after the user changed what it shows: the title,
+    /// the summary or a speaker's name. Only a meeting that has a note gets one here;
+    /// before its first AI run, that run writes the note.
+    func meetingNoteSourceChanged(meetingID: UUID) {
+        guard MeetingNotesSettingsStore().noteURL(for: meetingID) != nil else { return }
+        writeMeetingNote(meetingID: meetingID)
     }
 
     /// Takes over TypeWhisper's notes folder and "Besprechungsnotizen" prompt. At launch
