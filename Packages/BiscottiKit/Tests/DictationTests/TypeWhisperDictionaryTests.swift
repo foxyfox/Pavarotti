@@ -26,6 +26,34 @@ struct TypeWhisperDictionaryTests {
         }
     }
 
+    @Test("learned corrections must look like recognition errors, manual ones always count")
+    func learnedCorrections() throws {
+        try withSupportFolder { folder in
+            try makeStore(in: folder, rows: [
+                StoreRow("correction", "Gohe-Modell", "Cohere-Modell", source: "autoLearned"),
+                StoreRow("correction", "unser", "unseres", source: "autoLearned"),
+                StoreRow("correction", "Bilder", "designs", source: "autoLearned"),
+                StoreRow("correction", "Clot", "Claude")
+            ])
+            let dictionary = PersonalDictionary(fileURL: nil)
+
+            let summary = TypeWhisperImport.importDictionary(into: dictionary, supportDirectory: folder)
+
+            #expect(dictionary.entries.map(\.original) == ["Gohe-Modell", "Clot"])
+            #expect(summary == "Dictionary: 2 of 2 corrections added. "
+                + "Learned rewrites left out: unser \u{2192} unseres, Bilder \u{2192} designs.")
+        }
+    }
+
+    @Test("TypeWhisper is imported once: everything on a fresh install, else the dictionary")
+    func launchImport() {
+        typealias Plan = TypeWhisperImport.LaunchImport
+        #expect(Plan(checkedBefore: false, available: true, settingsSaved: false) == .everything)
+        #expect(Plan(checkedBefore: false, available: true, settingsSaved: true) == .dictionary)
+        #expect(Plan(checkedBefore: true, available: true, settingsSaved: false) == .nothing)
+        #expect(Plan(checkedBefore: false, available: false, settingsSaved: false) == .nothing)
+    }
+
     @Test("a store without the dictionary table is reported")
     func unknownLayout() throws {
         try withSupportFolder { folder in
@@ -76,12 +104,14 @@ private struct StoreRow {
     let original: String
     let replacement: String?
     let enabled: Bool
+    let source: String
 
-    init(_ type: String, _ original: String, _ replacement: String? = nil, enabled: Bool = true) {
+    init(_ type: String, _ original: String, _ replacement: String? = nil, enabled: Bool = true, source: String = "manual") {
         self.type = type
         self.original = original
         self.replacement = replacement
         self.enabled = enabled
+        self.source = source
     }
 }
 
@@ -103,7 +133,7 @@ private func makeStore(in folder: URL, rows: [StoreRow]) throws {
         let replacement = row.replacement.map { "'\($0)'" } ?? "NULL"
         return "INSERT INTO ZDICTIONARYENTRY (Z_ENT, Z_OPT, ZCASESENSITIVE, ZISENABLED, ZUSAGECOUNT, ZENTRYTYPE, "
             + "ZORIGINAL, ZREPLACEMENT, ZSOURCERAWVALUE) VALUES (1, 1, 0, \(row.enabled ? 1 : 0), 0, '\(row.type)', "
-            + "'\(row.original)', \(replacement), 'manual')"
+            + "'\(row.original)', \(replacement), '\(row.source)')"
     }
     try execute([create] + inserts, in: folder)
 }

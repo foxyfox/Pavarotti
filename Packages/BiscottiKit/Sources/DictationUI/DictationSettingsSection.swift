@@ -4,11 +4,9 @@ import Dictation
 import SwiftUI
 
 /// The Dictation part of Settings: shortcut, language, microphone (also for meetings), model,
-/// Accessibility access, sounds, audio ducking, the recording bubble, the dictionary and the
-/// import from TypeWhisper.
+/// Accessibility access, sounds, audio ducking, the recording bubble and the dictionary.
 public struct DictationSettingsSection: View {
     let controller: DictationController
-    @State var importSummary: String?
 
     public static let title = "Dictation"
     static let soundsTitle = "Dictation Sounds"
@@ -40,7 +38,6 @@ public struct DictationSettingsSection: View {
                         .font(Tokens.metadataFont)
                         .foregroundStyle(Tokens.secondaryText)
                 }
-                typeWhisperRow
             }
         } header: {
             HStack {
@@ -158,28 +155,6 @@ public struct DictationSettingsSection: View {
                 Button("Open Settings") { SystemAccessibilityTrust.openSettings() }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-            }
-        }
-    }
-
-    // MARK: - TypeWhisper
-
-    @ViewBuilder
-    private var typeWhisperRow: some View {
-        if controller.canImportFromTypeWhisper {
-            VStack(alignment: .leading, spacing: Tokens.spacingXS) {
-                HStack {
-                    Text("Settings from TypeWhisper")
-                    Spacer()
-                    Button("Import") {
-                        importSummary = controller.importFromTypeWhisper()
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-                Text(importSummary ?? "Takes over the start, done and error sounds, ducking, the shortcut and the dictionary.")
-                    .font(Tokens.metadataFont)
-                    .foregroundStyle(Tokens.secondaryText)
             }
         }
     }

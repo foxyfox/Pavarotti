@@ -15,11 +15,9 @@ public extension AppCore {
         intelligence.onRunFinished = { [weak self] meetingID in
             self?.writeMeetingNote(meetingID: meetingID)
         }
-        await importTypeWhisperNotesSetup(force: false)
+        await importTypeWhisperNotesSetup()
     }
 
-    // TODO: Also rewrite the note when speakers are renamed or the summary is edited
-    // by hand; today only an AI run updates it.
     /// Writes or rewrites the note of `meetingID` in the background.
     func writeMeetingNote(meetingID: UUID) {
         let failure: String? = if case let .failed(message) = intelligence.jobs[meetingID] {
@@ -28,40 +26,39 @@ public extension AppCore {
             nil
         }
         let store = store
-        Task.detached(priority: .utility) {
+        MeetingNoteQueue.shared.enqueue {
             await AppCore.writeNote(meetingID: meetingID, failure: failure, store: store)
         }
     }
 
-    /// Takes over TypeWhisper's notes folder and "Besprechungsnotizen" prompt. At launch
-    /// this runs once and keeps a summary prompt the user already changed; `force`
-    /// (the button in Settings) takes both over again.
-    /// - Returns: What was taken over, for the Settings caption.
-    @discardableResult
-    func importTypeWhisperNotesSetup(force: Bool) async -> String {
+    /// Rewrites the note of `meetingID` after the user changed what it shows: the title,
+    /// the summary or a speaker's name. Only a meeting that has a note gets one here;
+    /// before its first AI run, that run writes the note.
+    func meetingNoteSourceChanged(meetingID: UUID) {
+        guard MeetingNotesSettingsStore().noteURL(for: meetingID) != nil else { return }
+        writeMeetingNote(meetingID: meetingID)
+    }
+
+    /// Takes over TypeWhisper's notes folder and "Besprechungsnotizen" prompt, once. A
+    /// summary prompt the user already changed stays.
+    func importTypeWhisperNotesSetup() async {
         let settingsStore = MeetingNotesSettingsStore()
         var settings = settingsStore.load()
-        guard force || !settings.checkedTypeWhisper else { return "" }
+        guard !settings.checkedTypeWhisper else { return }
         settings.checkedTypeWhisper = true
         defer { settingsStore.save(settings) }
 
-        guard let setup = TypeWhisperNotesImport.setup() else {
-            return "TypeWhisper has no meeting notes set up."
-        }
-        var taken: [String] = []
+        guard let setup = TypeWhisperNotesImport.setup() else { return }
         if let folder = setup.folderPath {
             settings.folderPath = folder
-            taken.append("folder")
         }
         if let workflow = setup.workflow, let prompt = workflow.summaryPrompt {
             let current = await (try? store.settings())?.summaryPrompt ?? ""
-            if force || current.isEmpty {
+            if current.isEmpty {
                 try? await saveSummaryPrompt(prompt)
                 settings.templateName = workflow.name
-                taken.append("prompt \u{201C}\(workflow.name)\u{201D}")
             }
         }
-        return taken.isEmpty ? "Nothing to take over from TypeWhisper." : "Took over the \(taken.joined(separator: " and "))."
     }
 
     private nonisolated static func writeNote(meetingID: UUID, failure: String?, store: DataStore) async {

@@ -1,4 +1,3 @@
-import AppCore
 import AppKit
 import DesignSystem
 import MeetingNotes
@@ -9,11 +8,8 @@ import SwiftUI
 struct MeetingNotesSettingsSection: View {
     static let title = "Meeting Notes"
 
-    let appCore: AppCore
     private let store = MeetingNotesSettingsStore()
     @State private var settings = MeetingNotesSettingsStore().load()
-    @State private var importMessage: String?
-    @State private var isImporting = false
 
     var body: some View {
         Section(Self.title) {
@@ -35,13 +31,8 @@ struct MeetingNotesSettingsSection: View {
                 }
             }
             VStack(alignment: .leading, spacing: Tokens.spacingXS) {
-                HStack {
-                    Text("Prompt: \(settings.templateName)")
-                    Spacer()
-                    Button("Take Over from TypeWhisper") { takeOverFromTypeWhisper() }
-                        .disabled(isImporting)
-                }
-                Text(importMessage ?? "The summary prompt under AI Enhancements writes the notes. Taking over replaces it with TypeWhisper\u{2019}s.")
+                Text("Prompt: \(settings.templateName)")
+                Text("The summary prompt under AI Enhancements writes the notes.")
                     .font(Tokens.metadataFont)
                     .foregroundStyle(Tokens.secondaryText)
             }
@@ -70,14 +61,5 @@ struct MeetingNotesSettingsSection: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         settings.folderPath = url.path(percentEncoded: false)
         store.save(settings)
-    }
-
-    private func takeOverFromTypeWhisper() {
-        isImporting = true
-        Task {
-            importMessage = await appCore.importTypeWhisperNotesSetup(force: true)
-            settings = store.load()
-            isImporting = false
-        }
     }
 }

@@ -3,11 +3,15 @@ import SQLite3
 
 /// Reads the corrections from TypeWhisper's dictionary (`dictionary.store`, a SwiftData
 /// SQLite file) without opening TypeWhisper. Terms are counted but not taken over:
-/// Cohere Transcribe cannot use vocabulary hints.
+/// Cohere Transcribe cannot use vocabulary hints. Corrections TypeWhisper learned by itself
+/// must pass the check Pavarotti's own learning uses, so rewrites it picked up by mistake
+/// (such as "unser" → "unseres") stay out.
 enum TypeWhisperDictionaryReader {
     struct Contents: Equatable {
         var corrections: [DictionaryEntry] = []
         var termCount = 0
+        /// Learned corrections that look like rewrites, not recognition errors.
+        var leftOutLearned: [String] = []
     }
 
     enum ReadError: Error, Equatable, LocalizedError {
@@ -62,7 +66,10 @@ enum TypeWhisperDictionaryReader {
         func column(_ name: String) -> String {
             columns.contains(name) ? name : "NULL"
         }
-        let query = "SELECT \(column("ZENTRYTYPE")), ZORIGINAL, \(column("ZREPLACEMENT")), \(column("ZISENABLED")) FROM \(table)"
+        let query = """
+        SELECT \(column("ZENTRYTYPE")), ZORIGINAL, \(column("ZREPLACEMENT")), \(column("ZISENABLED")), \
+        \(column("ZSOURCERAWVALUE")) FROM \(table)
+        """
         var contents = Contents()
         for row in try strings(query, in: database) {
             let original = (row[1] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -70,6 +77,10 @@ enum TypeWhisperDictionaryReader {
             guard !original.isEmpty else { continue }
             guard row[0] == "correction", !replacement.isEmpty else {
                 contents.termCount += 1
+                continue
+            }
+            if row[4] == "autoLearned", !CorrectionDetector.isWordFix(original: original, replacement: replacement) {
+                contents.leftOutLearned.append("\(original) \u{2192} \(replacement)")
                 continue
             }
             let entry = DictionaryEntry(

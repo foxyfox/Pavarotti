@@ -53,7 +53,7 @@ public final class DictationController {
     @ObservationIgnored public var onShortcutConfigurationChange: (@MainActor () -> Void)?
 
     let dependencies: DictationDependencies
-    private let store: DictationSettingsStore
+    let store: DictationSettingsStore
     private let now: @MainActor () -> TimeInterval
     @ObservationIgnored private var gesture: ShortcutGesture
     @ObservationIgnored private var session = 0

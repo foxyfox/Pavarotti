@@ -261,8 +261,7 @@ private extension SettingsView {
         case .meetings:
             recordingSection
             notificationsSection
-            MeetingNotesSettingsSection(appCore: viewModel.appCore)
-            VoicesSettingsSection(appCore: viewModel.appCore)
+            MeetingNotesSettingsSection()
             customVocabularySection
             calendarSection
         case .intelligence:
