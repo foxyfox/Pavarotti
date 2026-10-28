@@ -72,7 +72,7 @@ struct FileTranscriptionView: View {
                     .foregroundStyle(.red)
                     .multilineTextAlignment(.center)
             } else if !session.isModelInstalled {
-                Text("Install the Cohere model in Settings \u{2192} Dictation first.")
+                Text("Install the dictation model in Settings \u{2192} Dictation first.")
                     .foregroundStyle(.secondary)
             }
         }

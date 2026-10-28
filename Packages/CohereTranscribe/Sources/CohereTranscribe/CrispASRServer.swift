@@ -2,7 +2,7 @@ import Darwin
 import Foundation
 import os
 
-/// Runs `crispasr --server` with the Cohere backend on a loopback port.
+/// Runs `crispasr --server` with the model's backend (Cohere or Parakeet) on a loopback port.
 ///
 /// The server keeps the model loaded on Metal, so dictations after the first one only
 /// pay for inference. It is started through a small shell guard that stops it when
@@ -13,6 +13,7 @@ public actor CrispASRServer {
         public let executable: URL
         public let model: URL
         public let modelID: String
+        public let backend: CohereModel.Backend
         public let voiceActivityModel: URL
         /// Silero language ID. Without it the server cannot detect the language.
         public let languageIdentificationModel: URL?
@@ -26,6 +27,7 @@ public actor CrispASRServer {
             executable: URL,
             model: URL,
             modelID: String,
+            backend: CohereModel.Backend = .cohere,
             voiceActivityModel: URL,
             languageIdentificationModel: URL?,
             wordAligner: URL? = nil,
@@ -35,6 +37,7 @@ public actor CrispASRServer {
             self.executable = executable
             self.model = model
             self.modelID = modelID
+            self.backend = backend
             self.voiceActivityModel = voiceActivityModel
             self.languageIdentificationModel = languageIdentificationModel
             self.wordAligner = wordAligner
@@ -51,7 +54,7 @@ public actor CrispASRServer {
         func arguments(port: UInt16) -> [String] {
             var arguments = [
                 "--server",
-                "--backend", "cohere",
+                "--backend", backend.rawValue,
                 "--model", model.path,
                 "--host", "127.0.0.1",
                 "--port", String(port),

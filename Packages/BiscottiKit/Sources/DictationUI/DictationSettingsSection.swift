@@ -50,7 +50,7 @@ public struct DictationSettingsSection: View {
             HStack {
                 Text(Self.title)
                 Spacer()
-                Text("Runs locally with Cohere Transcribe.")
+                Text("Runs locally on this Mac.")
                     .font(Tokens.metadataFont)
                     .foregroundStyle(Tokens.secondaryText)
             }

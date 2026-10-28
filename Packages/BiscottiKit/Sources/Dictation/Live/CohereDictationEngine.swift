@@ -22,6 +22,12 @@ public actor CohereDictationEngine: DictationTranscribing {
         installer.isInstalled(CohereAssetCatalog.wordAligner)
     }
 
+    /// Whether meetings with this model get their word times from the aligner. Parakeet
+    /// times the words itself; an unknown model is treated like Cohere.
+    public nonisolated func usesWordAligner(modelID: String) -> Bool {
+        CohereModel.model(id: modelID)?.backend.usesWordAligner ?? true
+    }
+
     /// Bytes the word aligner still needs to download, 0 once installed.
     public nonisolated var wordAlignerDownloadBytes: Int64 {
         isWordAlignerInstalled ? 0 : CohereAssetCatalog.wordAligner.size

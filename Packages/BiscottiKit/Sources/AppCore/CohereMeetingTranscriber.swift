@@ -3,10 +3,11 @@ import Foundation
 import Transcription
 import TranscriptionService
 
-/// Pavarotti: transcribes meetings with Cohere Transcribe instead of WhisperKit.
+/// Pavarotti: transcribes meetings with Cohere Transcribe (or the small Parakeet model)
+/// instead of WhisperKit.
 ///
-/// The speech goes through the same local Cohere server as dictation, with word times
-/// from its aligner, so only one transcription model is ever loaded. The transcription
+/// The speech goes through the same local server as dictation, with word times from the
+/// aligner (Parakeet times words itself), so only one transcription model is ever loaded. The transcription
 /// worker then only finds the speakers (SpeakerKit) and gives each sentence the speaker
 /// it overlaps most; voice profiles and participant matching work on that as before.
 struct CohereMeetingTranscriber: Transcribing {
@@ -25,11 +26,17 @@ struct CohereMeetingTranscriber: Transcribing {
         self.settings = settings
     }
 
-    /// The speaker model and the word aligner. The Cohere model itself is installed in
-    /// Settings → Dictation.
+    /// Whether the chosen model gets its word times from the aligner. Parakeet times the
+    /// words itself.
+    private var needsWordAligner: Bool {
+        speech.usesWordAligner(modelID: settings().modelID)
+    }
+
+    /// The speaker model and, for Cohere, the word aligner. The speech model itself is
+    /// installed in Settings → Dictation.
     func ensureModelsDownloaded(status: (@Sendable (String) -> Void)?) async throws {
         try await transcriber.ensureSpeakerModelsDownloaded(status: status)
-        guard !speech.isWordAlignerInstalled else { return }
+        guard needsWordAligner, !speech.isWordAlignerInstalled else { return }
         status?("Downloading word timing model")
         do {
             try await speech.installWordAligner { _ in }
@@ -58,7 +65,7 @@ struct CohereMeetingTranscriber: Transcribing {
 
     func modelsPresent() async -> Bool {
         let speakers = await transcriber.speakerModelsPresent()
-        return speakers && speech.isWordAlignerInstalled
+        return speakers && (!needsWordAligner || speech.isWordAlignerInstalled)
     }
 
     func shutdown() async {
@@ -76,7 +83,7 @@ enum MeetingTranscriptionError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .speechModelNotInstalled:
-            "Meetings are transcribed with Cohere Transcribe. Install it in Settings \u{2192} Dictation first."
+            "Meetings are transcribed with the dictation model. Install it in Settings \u{2192} Dictation first."
         }
     }
 }

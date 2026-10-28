@@ -46,4 +46,12 @@ struct LanguagePolicyTests {
     func resolvedFromDetection() {
         #expect(LanguagePolicy.resolvedLanguage(requested: "auto", detected: "en-US") == "en")
     }
+
+    @Test("A model that writes what it hears reports what it detected")
+    func heardLanguage() {
+        #expect(LanguagePolicy.heardLanguage(requested: "de", detected: "en") == "en")
+        #expect(LanguagePolicy.heardLanguage(requested: "auto", detected: "German") == "de")
+        #expect(LanguagePolicy.heardLanguage(requested: "en", detected: nil) == "en")
+        #expect(LanguagePolicy.heardLanguage(requested: "auto", detected: "fr") == "de")
+    }
 }

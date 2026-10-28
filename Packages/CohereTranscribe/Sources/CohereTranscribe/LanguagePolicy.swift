@@ -41,6 +41,15 @@ enum LanguagePolicy {
         return code
     }
 
+    /// The language of a model that writes what it hears (Parakeet): the detected one when
+    /// it is German or English, else the requested one, else German.
+    static func heardLanguage(requested: String, detected: String?) -> String {
+        if let code = normalized(detected), accepted.contains(code) {
+            return code
+        }
+        return accepted.contains(requested) ? requested : fallback
+    }
+
     /// Lowercase ISO 639-1 code from values like `de`, `de-DE`, `German`.
     static func normalized(_ value: String?) -> String? {
         guard let value else { return nil }
