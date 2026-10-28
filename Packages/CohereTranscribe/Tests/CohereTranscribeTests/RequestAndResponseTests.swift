@@ -23,6 +23,22 @@ struct RequestAndResponseTests {
         #expect(request.contentType == "multipart/form-data; boundary=BOUNDARY")
     }
 
+    @Test("Language ID is turned off only for models that detect the language")
+    func languageIdentificationField() throws {
+        let plain = TranscriptionRequest(audio: Data(), filename: "a.wav", model: "m", language: "auto")
+        #expect(!plain.formFields.contains { $0.0 == "lid_backend" })
+        let parakeet = TranscriptionRequest(
+            audio: Data(),
+            filename: "a.wav",
+            model: "m",
+            language: "auto",
+            skipsLanguageIdentification: true,
+            boundary: "BOUNDARY"
+        )
+        let body = try #require(String(data: parakeet.body, encoding: .utf8))
+        #expect(body.contains("name=\"lid_backend\"\r\n\r\noff\r\n"))
+    }
+
     @Test("URL request targets the transcription endpoint with the API key")
     func urlRequest() throws {
         let endpoint = try LoopbackPort.url(port: 8123)
@@ -125,6 +141,24 @@ struct RequestAndResponseTests {
         let index = try #require(arguments.firstIndex(of: "--aligner-model"))
         #expect(Array(arguments[index ... index + 2]) == ["--aligner-model", "/tmp/cohere/aligner.gguf", "--force-aligner"])
         #expect(Array(arguments.suffix(4)) == ["--lid-backend", "silero", "--lid-model", "/tmp/cohere/lid.gguf"])
+    }
+
+    @Test("Server arguments name the model's backend")
+    func parakeetArguments() {
+        let root = URL(fileURLWithPath: "/tmp/cohere")
+        let configuration = CrispASRServer.Configuration(
+            executable: root.appending(path: "crispasr"),
+            model: root.appending(path: "parakeet.gguf"),
+            modelID: "p",
+            backend: .parakeet,
+            voiceActivityModel: root.appending(path: "vad.bin"),
+            languageIdentificationModel: nil,
+            cacheDirectory: root
+        )
+        let arguments = configuration.arguments(port: 9000)
+        #expect(arguments.starts(with: ["--server", "--backend", "parakeet", "--model", "/tmp/cohere/parakeet.gguf"]))
+        #expect(!arguments.contains("--lid-backend"))
+        #expect(!arguments.contains("--aligner-model"))
     }
 
     @Test("A free loopback port can be reserved")

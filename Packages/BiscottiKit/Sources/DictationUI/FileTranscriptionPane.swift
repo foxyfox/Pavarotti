@@ -17,7 +17,7 @@ public struct FileTranscriptionPane: View {
                 Text("Transcribe File")
                     .font(.serifHeadline)
                     .foregroundStyle(.ink)
-                Text("Turns an audio or video file into a Markdown transcript, on this Mac with Cohere Transcribe.")
+                Text("Turns an audio or video file into a Markdown transcript, on this Mac with the dictation model.")
                     .font(Tokens.metadataFont)
                     .foregroundStyle(Tokens.secondaryText)
             }

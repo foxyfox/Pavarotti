@@ -1,9 +1,10 @@
 import Foundation
 
-/// Local speech-to-text with Cohere Transcribe through CrispASR.
+/// Local speech-to-text with Cohere Transcribe (or Parakeet) through CrispASR.
 ///
 /// Starts the server on first use and keeps it warm. In automatic mode it detects
-/// German or English and transcribes anything else as German.
+/// German or English and transcribes anything else as German. Parakeet detects the
+/// language itself and writes whatever it hears.
 public actor CohereTranscriber {
     public let model: CohereModel
     public let installer: CohereInstaller
@@ -57,12 +58,16 @@ public actor CohereTranscriber {
         language: TranscriptionLanguage
     ) async throws -> CohereTranscription {
         let server = try await runningServer()
-        var requested = await LanguagePolicy.firstRequest(
+        let detectsItself = model.backend.detectsLanguage
+        let serverDetects = await server.detectsLanguage
+        var requested = LanguagePolicy.firstRequest(
             for: language,
-            detectionAvailable: server.detectsLanguage
+            detectionAvailable: detectsItself || serverDetects
         )
         var answer = try await server.transcribe(request(audio: audio, filename: filename, language: requested))
-        if let retry = LanguagePolicy.retryLanguage(afterRequesting: requested, detected: answer.language) {
+        if !detectsItself,
+           let retry = LanguagePolicy.retryLanguage(afterRequesting: requested, detected: answer.language)
+        {
             requested = retry
             answer = try await server.transcribe(request(audio: audio, filename: filename, language: retry))
         }
@@ -76,17 +81,27 @@ public actor CohereTranscriber {
         }
         return CohereTranscription(
             text: answer.text.trimmingCharacters(in: .whitespacesAndNewlines),
-            language: LanguagePolicy.resolvedLanguage(requested: requested, detected: answer.language),
+            language: detectsItself
+                ? LanguagePolicy.heardLanguage(requested: requested, detected: answer.language)
+                : LanguagePolicy.resolvedLanguage(requested: requested, detected: answer.language),
             segments: segments
         )
     }
 
     private func request(audio: Data, filename: String, language: String) -> TranscriptionRequest {
-        TranscriptionRequest(audio: audio, filename: filename, model: model.id, language: language)
+        TranscriptionRequest(
+            audio: audio,
+            filename: filename,
+            model: model.id,
+            language: language,
+            skipsLanguageIdentification: model.backend.detectsLanguage
+        )
     }
 
     private func runningServer() async throws -> CrispASRServer {
-        if let server, server.configuration.wordAligner == nil, installer.isInstalled(CohereAssetCatalog.wordAligner) {
+        if let server, server.configuration.wordAligner == nil, model.backend.usesWordAligner,
+           installer.isInstalled(CohereAssetCatalog.wordAligner)
+        {
             // The aligner was installed while the server ran; restart so it takes part.
             await server.stop()
             self.server = nil
@@ -107,11 +122,12 @@ public actor CohereTranscriber {
             executable: root.appending(path: CohereAssetCatalog.runtimeExecutablePath),
             model: root.appending(path: model.asset.relativePath),
             modelID: model.id,
+            backend: model.backend,
             voiceActivityModel: root.appending(path: CohereAssetCatalog.voiceActivityModel.relativePath),
-            languageIdentificationModel: root.appending(
-                path: CohereAssetCatalog.languageIdentificationModel.relativePath
-            ),
-            wordAligner: installer.isInstalled(CohereAssetCatalog.wordAligner)
+            languageIdentificationModel: model.backend.detectsLanguage
+                ? nil
+                : root.appending(path: CohereAssetCatalog.languageIdentificationModel.relativePath),
+            wordAligner: model.backend.usesWordAligner && installer.isInstalled(CohereAssetCatalog.wordAligner)
                 ? root.appending(path: CohereAssetCatalog.wordAligner.relativePath)
                 : nil,
             cacheDirectory: root.appending(path: "Cache", directoryHint: .isDirectory)

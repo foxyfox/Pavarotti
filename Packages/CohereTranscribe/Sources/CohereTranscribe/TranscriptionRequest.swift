@@ -79,6 +79,10 @@ struct TranscriptionRequest {
     let filename: String
     let model: String
     let language: String
+    /// Turns the server's language ID off for this request, for a model that detects the
+    /// language itself. Otherwise "auto" could make the server fetch a Whisper model to
+    /// detect it.
+    var skipsLanguageIdentification = false
     var boundary = "pavarotti-\(UUID().uuidString)"
 
     var contentType: String {
@@ -92,13 +96,21 @@ struct TranscriptionRequest {
         body.append(Data("Content-Type: \(Self.mimeType(for: filename))\r\n\r\n".utf8))
         body.append(audio)
         body.append(Data("\r\n".utf8))
-        for (name, value) in [("model", model), ("response_format", "verbose_json"), ("language", language)] {
+        for (name, value) in formFields {
             body.append(Data("--\(boundary)\r\n".utf8))
             body.append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
             body.append(Data("\(value)\r\n".utf8))
         }
         body.append(Data("--\(boundary)--\r\n".utf8))
         return body
+    }
+
+    var formFields: [(String, String)] {
+        var fields = [("model", model), ("response_format", "verbose_json"), ("language", language)]
+        if skipsLanguageIdentification {
+            fields.append(("lid_backend", "off"))
+        }
+        return fields
     }
 
     func urlRequest(endpoint: URL, apiKey: String) -> URLRequest {

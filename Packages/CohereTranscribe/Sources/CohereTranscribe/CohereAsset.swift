@@ -51,12 +51,17 @@ public struct CohereAsset: Sendable, Hashable {
 /// The pinned files of the CrispASR runtime and its helper models.
 ///
 /// Versions, revisions and checksums match what the TypeWhisper fork runs today, so an
-/// existing TypeWhisper download can be reused byte for byte.
+/// existing TypeWhisper download can be reused byte for byte. The compact and small models
+/// are Pavarotti's own additions and are always downloaded.
 public enum CohereAssetCatalog {
     public static let crispASRVersion = "0.8.24"
 
     static let modelRepository = "cstr/cohere-transcribe-03-2026-GGUF"
     static let modelRevision = "2242638d5dfecc6f1dbe6c3a8713b97deb2e150f"
+    /// The newer quantization of the compact model, from a later revision of the repository.
+    static let compactRevision = "4e98a8c31c95a92d651e60e3bfae4fe29fc6e026"
+    static let parakeetRepository = "cstr/parakeet-tdt-0.6b-v3-GGUF"
+    static let parakeetRevision = "dff69b0e675921ffd5a6133f5fbe2aac690d3ec3"
 
     /// The CrispASR command line runtime (server mode, Metal).
     public static let runtime = CohereAsset(
@@ -115,15 +120,25 @@ public enum CohereAssetCatalog {
 
     static let runtimeExecutablePath = "Runtime/crispasr-macos/crispasr"
 
-    /// Everything a model needs to run, the model itself first.
+    /// Everything a model needs to run, the model itself first. Parakeet detects the
+    /// language itself and needs no language ID.
     public static func assets(for model: CohereModel) -> [CohereAsset] {
-        [model.asset, voiceActivityModel, languageIdentificationModel, runtime]
+        switch model.backend {
+        case .cohere: [model.asset, voiceActivityModel, languageIdentificationModel, runtime]
+        case .parakeet: [model.asset, voiceActivityModel, runtime]
+        }
     }
 
-    static func modelAsset(file: String, size: Int64, sha256: String) -> CohereAsset {
+    static func modelAsset(
+        file: String,
+        size: Int64,
+        sha256: String,
+        repository: String = modelRepository,
+        revision: String = modelRevision
+    ) -> CohereAsset {
         CohereAsset(
             name: file,
-            source: huggingFaceURL(repository: modelRepository, revision: modelRevision, file: file),
+            source: huggingFaceURL(repository: repository, revision: revision, file: file),
             relativePath: file,
             size: size,
             sha256: sha256

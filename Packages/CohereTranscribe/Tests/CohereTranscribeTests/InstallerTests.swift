@@ -215,6 +215,37 @@ struct AssetCatalogTests {
         ])
     }
 
+    @Test("Parakeet needs no language ID")
+    func assetsForParakeet() {
+        #expect(CohereAssetCatalog.assets(for: .small).map(\.name) == [
+            CohereModel.small.asset.name,
+            CohereAssetCatalog.voiceActivityModel.name,
+            CohereAssetCatalog.runtime.name
+        ])
+    }
+
+    @Test("Only Cohere models use the word aligner and the language ID")
+    func backends() {
+        #expect(CohereModel.small.backend == .parakeet)
+        #expect(!CohereModel.small.backend.usesWordAligner)
+        #expect(CohereModel.small.backend.detectsLanguage)
+        for model in CohereModel.all where model != .small {
+            #expect(model.backend == .cohere)
+            #expect(model.backend.usesWordAligner)
+            #expect(!model.backend.detectsLanguage)
+        }
+    }
+
+    @Test("The small and compact models come from their own pinned revisions")
+    func pinnedRevisions() {
+        let small = CohereModel.small.asset.source.absoluteString
+        #expect(small.contains(CohereAssetCatalog.parakeetRepository))
+        #expect(small.contains(CohereAssetCatalog.parakeetRevision))
+        #expect(CohereModel.compact.asset.source.absoluteString.contains(CohereAssetCatalog.compactRevision))
+        #expect(CohereModel.fast.asset.source.absoluteString.contains(CohereAssetCatalog.modelRevision))
+        #expect(CohereModel.recommended == .fast)
+    }
+
     @Test("The word aligner is pinned and optional")
     func wordAligner() {
         let aligner = CohereAssetCatalog.wordAligner
