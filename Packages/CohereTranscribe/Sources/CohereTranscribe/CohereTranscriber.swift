@@ -3,8 +3,9 @@ import Foundation
 /// Local speech-to-text with Cohere Transcribe (or Parakeet) through CrispASR.
 ///
 /// Starts the server on first use and keeps it warm. In automatic mode it detects
-/// German or English and transcribes anything else as German. Parakeet detects the
-/// language itself and writes whatever it hears.
+/// German or English and transcribes anything else as German; any other language the
+/// model knows can be chosen. Parakeet detects the language itself and writes whatever
+/// it hears.
 public actor CohereTranscriber {
     public let model: CohereModel
     public let installer: CohereInstaller
@@ -80,6 +81,9 @@ public actor CohereTranscriber {
         filename: String,
         language: TranscriptionLanguage
     ) async throws -> CohereTranscription {
+        // A language this model does not know, chosen for another model, falls back to
+        // automatic.
+        let language = model.supports(language) ? language : .automatic
         let server = try await runningServer()
         let detectsItself = model.backend.detectsLanguage
         let serverDetects = await server.detectsLanguage

@@ -25,11 +25,7 @@ public struct DictationSettingsSection: View {
                         Text(mode.displayName).tag(mode)
                     }
                 }
-                Picker("Language", selection: languageBinding) {
-                    Text("Automatic (German or English)").tag(TranscriptionLanguage.automatic)
-                    Text("German").tag(TranscriptionLanguage.german)
-                    Text("English").tag(TranscriptionLanguage.english)
-                }
+                languageRows
             }
             // Meeting recordings use the same microphone, so it stays visible without dictation.
             microphoneRows
@@ -198,13 +194,6 @@ extension DictationSettingsSection {
         Binding(
             get: { controller.settings.mode },
             set: { newValue in controller.update { $0.mode = newValue } }
-        )
-    }
-
-    var languageBinding: Binding<TranscriptionLanguage> {
-        Binding(
-            get: { controller.settings.language },
-            set: { newValue in controller.update { $0.language = newValue } }
         )
     }
 

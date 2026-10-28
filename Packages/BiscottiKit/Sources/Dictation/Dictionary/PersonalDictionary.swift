@@ -42,8 +42,20 @@ public final class PersonalDictionary {
         entries = Self.load(from: fileURL)
     }
 
-    public static var standardFileURL: URL {
+    public nonisolated static var standardFileURL: URL {
         URL.applicationSupportDirectory.appending(path: "Pavarotti/dictionary.json")
+    }
+
+    /// The saved entries, read without touching the live dictionary, for work off the main
+    /// actor such as meeting transcripts. Empty without a readable file.
+    public nonisolated static func storedEntries(at fileURL: URL = standardFileURL) -> [DictionaryEntry] {
+        struct Stored: Decodable {
+            let entries: [DictionaryEntry]
+        }
+        guard let data = try? Data(contentsOf: fileURL) else { return [] }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode(Stored.self, from: data))?.entries ?? []
     }
 
     // MARK: - Using the dictionary

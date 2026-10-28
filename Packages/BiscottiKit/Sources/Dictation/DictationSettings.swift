@@ -25,7 +25,15 @@ public struct DictationSettings: Codable, Equatable, Sendable {
     public var shortcut = DictationShortcut.standard
     public var mode = DictationShortcutMode.hybrid
     public var language = TranscriptionLanguage.automatic
-    public var modelID = CohereModel.recommended.id
+    public var modelID = CohereModel.recommended.id {
+        // A language the new model does not know falls back to automatic.
+        didSet {
+            if let model = CohereModel.model(id: modelID), !model.supports(language) {
+                language = .automatic
+            }
+        }
+    }
+
     public var playsSounds = true
     public var startSound = SoundChoice.system("Tink")
     public var doneSound = SoundChoice.system("Pop")
