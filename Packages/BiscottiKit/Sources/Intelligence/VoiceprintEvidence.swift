@@ -38,6 +38,7 @@ public enum VoiceprintEvidence {
         detail: MeetingDetailData,
         human: [Int: PersonData],
         consent: VoiceConsentStore? = nil,
+        imported: ImportedVoiceStore? = nil,
         config: VoiceprintConfig = .default
     ) async throws -> VoiceprintEvidenceResult {
         let allSpeakers = Set(transcript.segments.compactMap(\.speakerID)).sorted()
@@ -46,7 +47,7 @@ public enum VoiceprintEvidence {
         let query = try await store.voiceprintQuery(transcriptID: transcript.id, kind: .raw)
 
         let (corpus, queryVectors) = try await loadCorpus(
-            store: store, query: query, meetingID: meetingID, consent: consent
+            store: store, query: query, meetingID: meetingID, consent: consent, imported: imported
         )
 
         let invitees = buildInvitees(detail: detail)
@@ -89,12 +90,14 @@ public enum VoiceprintEvidence {
         transcript: TranscriptData,
         detail: MeetingDetailData,
         human: [Int: PersonData],
-        consent: VoiceConsentStore? = nil
+        consent: VoiceConsentStore? = nil,
+        imported: ImportedVoiceStore? = nil
     ) async -> String {
         do {
             let result = try await compute(
                 store: store, meetingID: meetingID,
-                transcript: transcript, detail: detail, human: human, consent: consent
+                transcript: transcript, detail: detail, human: human,
+                consent: consent, imported: imported
             )
             return result.block
         } catch {
@@ -107,7 +110,7 @@ public enum VoiceprintEvidence {
 
     private static func loadCorpus(
         store: DataStore, query: VoiceprintQueryData?,
-        meetingID: UUID, consent: VoiceConsentStore?
+        meetingID: UUID, consent: VoiceConsentStore?, imported: ImportedVoiceStore?
     ) async throws -> (PreparedCorpus, [Int: [Float]]) {
         guard let space = query?.space else {
             let emptyData = VoiceprintCorpusData(
@@ -115,9 +118,13 @@ public enum VoiceprintEvidence {
             )
             return (PreparedCorpus(emptyData), [:])
         }
-        let stored = try await store.voiceprintCorpus(
+        var stored = try await store.voiceprintCorpus(
             kind: .raw, space: space, excludingMeetingID: meetingID
         )
+        // Pavarotti: voices taken over from TypeWhisper count like one named meeting each.
+        if let imported {
+            stored = try await ImportedVoiceCorpus.corpus(stored, adding: imported, store: store)
+        }
         // Pavarotti: only voices with consent (and the user's own) name speakers.
         var allowed: Set<UUID>?
         if let consent {

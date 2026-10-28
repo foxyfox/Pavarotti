@@ -83,7 +83,7 @@
                 let evidence = try await VoiceprintEvidence.compute(
                     store: store, meetingID: meetingID,
                     transcript: transcript, detail: detail,
-                    human: human
+                    human: human, imported: importedVoices
                 )
 
                 let hasVoiceprint = evidence.queryVectors[speakerID] != nil
