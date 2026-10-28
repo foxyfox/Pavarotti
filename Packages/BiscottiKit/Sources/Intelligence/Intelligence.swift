@@ -41,6 +41,9 @@ public final class Intelligence {
     /// previews) uses every voice, as Biscotti does.
     @ObservationIgnored public var voiceConsent: VoiceConsentStore?
 
+    /// Pavarotti: voices taken over from TypeWhisper, matched like named speakers.
+    @ObservationIgnored public var importedVoices: ImportedVoiceStore?
+
     // MARK: - Init
 
     /// Creates an `Intelligence` service.
@@ -234,7 +237,8 @@ public final class Intelligence {
         let voiceprintBlock = doSpeakers
             ? await VoiceprintEvidence.block(
                 store: store, meetingID: meetingID,
-                transcript: transcript, detail: detail, human: human, consent: voiceConsent
+                transcript: transcript, detail: detail, human: human,
+                consent: voiceConsent, imported: importedVoices
             )
             : ""
 
