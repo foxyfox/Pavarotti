@@ -30,11 +30,12 @@ public extension AppCore {
     /// - Returns: The outcome, for the Settings caption.
     func checkCloudLLM() async -> String {
         guard let endpoint = cloudLLM?.endpoint() else {
-            return "Fill in the model, the address and the API key first."
+            return String(localized: "Fill in the model, the address and the API key first.")
         }
         do {
             let answer = try await ProviderLLMRunner.checkConnection(to: endpoint)
-            return "Connected: \(endpoint.model) answered \u{201C}\(answer.prefix(40))\u{201D}."
+            let start = String(answer.prefix(40))
+            return String(localized: "Connected: \(endpoint.model) answered \u{201C}\(start)\u{201D}.")
         } catch {
             return error.localizedDescription
         }

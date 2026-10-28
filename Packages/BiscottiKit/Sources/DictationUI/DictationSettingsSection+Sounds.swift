@@ -9,9 +9,18 @@ extension DictationSettingsSection {
     var soundRows: some View {
         Toggle("Play sounds", isOn: playsSoundsBinding)
         if controller.settings.playsSounds {
-            SoundPickerRow(title: "Start", caption: "When the microphone is listening.", controller: controller, slot: .start)
-            SoundPickerRow(title: "Done", caption: "When the text was pasted.", controller: controller, slot: .done)
-            SoundPickerRow(title: "Error", caption: "When something went wrong.", controller: controller, slot: .error)
+            SoundPickerRow(
+                title: String(localized: "Start"), caption: String(localized: "When the microphone is listening."),
+                controller: controller, slot: .start
+            )
+            SoundPickerRow(
+                title: String(localized: "Done"), caption: String(localized: "When the text was pasted."),
+                controller: controller, slot: .done
+            )
+            SoundPickerRow(
+                title: String(localized: "Error"), caption: String(localized: "When something went wrong."),
+                controller: controller, slot: .error
+            )
         }
     }
 
@@ -136,7 +145,7 @@ struct SoundPickerRow: View {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.audio]
         panel.allowsMultipleSelection = false
-        panel.message = "Choose a sound for \u{201C}\(title)\u{201D}"
+        panel.message = String(localized: "Choose a sound for \u{201C}\(title)\u{201D}")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             let choice = try controller.importSound(from: url)

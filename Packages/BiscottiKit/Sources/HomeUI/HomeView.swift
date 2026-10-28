@@ -47,7 +47,7 @@ public struct HomeView: View {
 
     private var greetingBlock: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(viewModel.greeting)
+            Text(LocalizedStringKey(viewModel.greeting))
                 .font(Tokens.greetingFont)
                 .tracking(Tokens.greetingTracking)
                 .foregroundStyle(.ink)
@@ -73,7 +73,7 @@ public struct HomeView: View {
                 StatChip(
                     icon: "circle.fill",
                     tint: .sage,
-                    text: "Next \(text)"
+                    text: String(localized: "Next \(text)")
                 )
             }
         }
@@ -417,7 +417,7 @@ private struct HomePastSection: View {
 /// Shared view helpers used by the extracted section structs.
 private enum HomeSharedViews {
     static func groupLabel(_ title: String) -> some View {
-        Text(title)
+        Text(LocalizedStringKey(title))
             .font(.monoKicker)
             .textCase(.uppercase)
             .tracking(1.47)

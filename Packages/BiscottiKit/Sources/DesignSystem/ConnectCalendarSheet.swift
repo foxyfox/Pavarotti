@@ -20,10 +20,10 @@ public struct ConnectCalendarSheet: View {
                 .foregroundStyle(.ink)
 
             // Subtitle
-            Text(
-                "\(AppName.display) reads your schedule from the Mac\u{2019}s Calendar app. "
-                    + "Add your account there once and your calendars appear here automatically."
-            )
+            Text("""
+            \(AppName.display) reads your schedule from the Mac\u{2019}s Calendar app. \
+            Add your account there once and your calendars appear here automatically.
+            """)
             .foregroundStyle(.inkSecondary)
 
             // Numbered steps
@@ -69,7 +69,7 @@ public struct ConnectCalendarSheet: View {
 
     // MARK: - Step rows
 
-    private func stepRow(number: Int, text: String) -> some View {
+    private func stepRow(number: Int, text: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: Tokens.spacingSM) {
             Text("\(number).")
                 .monospacedDigit()

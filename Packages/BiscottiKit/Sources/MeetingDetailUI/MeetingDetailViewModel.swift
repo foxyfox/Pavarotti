@@ -1502,7 +1502,7 @@ extension MeetingDetailViewModel {
                 let remaining = others.count - otherNames.count
                 let suffix = if remaining > 0 {
                     ", " + otherNames.joined(separator: ", ")
-                        + " and \(remaining) other\(remaining == 1 ? "" : "s")"
+                        + (remaining == 1 ? String(localized: " and 1 other") : String(localized: " and \(remaining) others"))
                 } else {
                     ", " + otherNames.joined(separator: ", ")
                 }

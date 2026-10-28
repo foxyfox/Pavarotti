@@ -84,7 +84,7 @@ extension RecordingView {
             ? Tokens.warningChipText : Color.ink
 
         return HStack(spacing: 6) {
-            Text(kicker)
+            Text(LocalizedStringKey(kicker))
                 .font(.biscottiMono(9.5, weight: .medium))
                 .tracking(1.4)
                 .foregroundStyle(kickerColor)

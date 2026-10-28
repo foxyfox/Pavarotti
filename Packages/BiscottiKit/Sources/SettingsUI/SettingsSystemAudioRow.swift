@@ -29,7 +29,7 @@ extension SettingsView {
                 ProgressView()
                     .controlSize(.small)
             } else {
-                Text(systemAudioStatusText)
+                Text(LocalizedStringKey(systemAudioStatusText))
                     .font(Tokens.metadataFont)
                     .foregroundStyle(Tokens.secondaryText)
 

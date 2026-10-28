@@ -151,10 +151,10 @@ private struct DictationRow: View {
     static func dateText(_ date: Date, calendar: Calendar = .current) -> String {
         let time = date.formatted(date: .omitted, time: .shortened)
         if calendar.isDateInToday(date) {
-            return "Today, \(time)"
+            return String(localized: "Today, \(time)")
         }
         if calendar.isDateInYesterday(date) {
-            return "Yesterday, \(time)"
+            return String(localized: "Yesterday, \(time)")
         }
         return date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
     }

@@ -113,17 +113,17 @@ public struct MeetingListView: View {
     private var deleteDialogTitle: String {
         let count = viewModel.deleteConfirmationCount
         if count == 1 {
-            return "Delete this meeting?"
+            return String(localized: "Delete this meeting?")
         }
-        return "Delete \(count) meetings?"
+        return String(localized: "Delete \(count) meetings?")
     }
 
     private var deleteDialogMessage: String {
         let count = viewModel.deleteConfirmationCount
         if count == 1 {
-            return "This meeting and its recording will be permanently deleted."
+            return String(localized: "This meeting and its recording will be permanently deleted.")
         }
-        return "These \(count) meetings and their recordings will be permanently deleted."
+        return String(localized: "These \(count) meetings and their recordings will be permanently deleted.")
     }
 
     // MARK: - Browse mode (grouped by date)

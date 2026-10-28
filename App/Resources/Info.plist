@@ -5,6 +5,11 @@
 <dict>
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>de</string>
+    </array>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -26,7 +31,7 @@
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Pavarotti needs microphone access to record your voice during meetings.</string>
+    <string>Pavarotti needs microphone access to record your voice for dictation and meetings.</string>
     <key>NSAudioCaptureUsageDescription</key>
     <string>Pavarotti needs system audio access to record other meeting participants.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>

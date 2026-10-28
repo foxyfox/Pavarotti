@@ -11,7 +11,7 @@ public enum SoundChoice: Codable, Hashable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .none: "None"
+        case .none: String(localized: "None")
         case let .system(name): name
         case let .file(name): URL(fileURLWithPath: name).deletingPathExtension().lastPathComponent
         }

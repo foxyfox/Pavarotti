@@ -25,8 +25,8 @@ public final class PersonalDictionary {
 
         public var errorDescription: String? {
             switch self {
-            case .emptyText: "Enter what dictation hears and what it should write."
-            case .sameText: "The correction must differ from what dictation hears."
+            case .emptyText: String(localized: "Enter what dictation hears and what it should write.")
+            case .sameText: String(localized: "The correction must differ from what dictation hears.")
             }
         }
     }

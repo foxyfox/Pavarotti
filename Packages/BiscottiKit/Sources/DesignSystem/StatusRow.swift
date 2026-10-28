@@ -28,12 +28,12 @@ public struct StatusRow: View {
                     .foregroundStyle(.sage)
             }
             VStack(alignment: .leading, spacing: Tokens.spacingXS) {
-                Text(message)
+                Text(LocalizedStringKey(message))
                     .font(Tokens.metadataFont)
                     .foregroundStyle(Tokens.secondaryText)
 
                 if let subtitle {
-                    Text(subtitle)
+                    Text(LocalizedStringKey(subtitle))
                         .font(.caption)
                         .foregroundStyle(Tokens.secondaryText.opacity(0.8))
                 }

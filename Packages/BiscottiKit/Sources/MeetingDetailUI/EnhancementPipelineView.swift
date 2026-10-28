@@ -17,7 +17,7 @@ struct EnhancementPipelineView: View {
                     stageGlyph(stage.state)
                         .frame(width: 16, height: 16)
 
-                    Text(stage.label)
+                    Text(LocalizedStringKey(stage.label))
                         .font(.monoMeta)
                         .foregroundStyle(
                             stage.state == .pending

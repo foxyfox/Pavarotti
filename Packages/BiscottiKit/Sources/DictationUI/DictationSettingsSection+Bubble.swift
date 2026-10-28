@@ -4,7 +4,7 @@ import Foundation
 import SwiftUI
 
 extension DictationSettingsSection {
-    static let bubbleTitle = "Recording Bubble"
+    static let bubbleTitle = String(localized: "Recording Bubble")
 
     @ViewBuilder
     var bubbleRows: some View {

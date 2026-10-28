@@ -41,10 +41,10 @@ extension OnboardingView {
                 .font(.biscottiSerif(34))
                 .foregroundStyle(.ink)
 
-            Text(
-                "A few quick permissions \u{2014} every one is used "
-                    + "locally, nothing is sent anywhere."
-            )
+            Text("""
+            A few quick permissions \u{2014} every one is used \
+            locally, nothing is sent anywhere.
+            """)
             .font(.system(size: 16))
             .foregroundStyle(.inkSecondary)
             .frame(maxWidth: 440)

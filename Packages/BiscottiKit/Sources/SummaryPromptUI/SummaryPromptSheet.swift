@@ -77,11 +77,11 @@ public struct SummaryPromptSheet: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: Tokens.spacingXS) {
-            Text(kickerText)
+            Text(LocalizedStringKey(kickerText))
                 .kicker()
                 .foregroundStyle(.sage)
 
-            Text(titleText)
+            Text(LocalizedStringKey(titleText))
                 .font(.biscottiSerif(27))
                 .tracking(-0.27)
                 .foregroundStyle(.ink)
@@ -115,9 +115,9 @@ public struct SummaryPromptSheet: View {
     private var subtitleText: String {
         switch model.mode {
         case .global:
-            "These are the instructions \(AppName.display) sends the on-device model to write each meeting summary. Edit them directly. Changes apply to every future summary."
+            String(localized: "These are the instructions \(AppName.display) sends the on-device model to write each meeting summary. Edit them directly. Changes apply to every future summary.")
         case .perMeeting:
-            "Re-summarize this meeting with AI, optionally changing the prompt."
+            String(localized: "Re-summarize this meeting with AI, optionally changing the prompt.")
         }
     }
 

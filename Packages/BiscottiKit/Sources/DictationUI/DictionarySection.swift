@@ -37,9 +37,12 @@ struct DictionarySection: View {
         let entries = controller.dictionary.entries
         let learned = entries.count(where: { $0.source == .learned })
         switch entries.count {
-        case 0: return "None yet."
-        case 1: return learned == 1 ? "1 correction, learned." : "1 correction."
-        default: return learned > 0 ? "\(entries.count) corrections, \(learned) learned." : "\(entries.count) corrections."
+        case 0: return String(localized: "None yet.")
+        case 1: return learned == 1 ? String(localized: "1 correction, learned.") : String(localized: "1 correction.")
+        default:
+            return learned > 0
+                ? String(localized: "\(entries.count) corrections, \(learned) learned.")
+                : String(localized: "\(entries.count) corrections.")
         }
     }
 
@@ -152,11 +155,11 @@ struct DictionaryEntryRow: View {
 
     private var detail: String {
         let origin = switch entry.source {
-        case .manual: "added"
-        case .learned: "learned"
+        case .manual: String(localized: "added")
+        case .learned: String(localized: "learned")
         case .imported: "TypeWhisper"
         }
-        return entry.usageCount > 0 ? "\(origin), used \(entry.usageCount)\u{00D7}" : origin
+        return entry.usageCount > 0 ? String(localized: "\(origin), used \(entry.usageCount)\u{00D7}") : origin
     }
 
     private var enabledBinding: Binding<Bool> {

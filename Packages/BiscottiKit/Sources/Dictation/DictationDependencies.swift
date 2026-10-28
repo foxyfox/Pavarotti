@@ -14,19 +14,19 @@ public enum DictationError: Error, Equatable, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case let .microphoneUnavailable(reason):
-            "The microphone could not be started. \(reason)"
+            String(localized: "The microphone could not be started. \(reason)")
         case .microphoneDenied:
-            "Pavarotti may not use the microphone. Allow it in System Settings \u{2192} Privacy & Security \u{2192} Microphone."
+            String(localized: "Pavarotti may not use the microphone. Allow it in System Settings \u{2192} Privacy & Security \u{2192} Microphone.")
         case .silentMicrophone:
-            "The microphone recorded only silence. Choose another one in Settings \u{2192} Dictation."
+            String(localized: "The microphone recorded only silence. Choose another one in Settings \u{2192} Dictation.")
         case .nothingHeard:
-            "Nothing was heard. Check the microphone in Settings \u{2192} Dictation."
+            String(localized: "Nothing was heard. Check the microphone in Settings \u{2192} Dictation.")
         case .modelNotInstalled:
-            "Install the Cohere model in Settings \u{2192} Dictation first."
+            String(localized: "Install the Cohere model in Settings \u{2192} Dictation first.")
         case let .unknownModel(id):
-            "Unknown dictation model \(id)."
+            String(localized: "Unknown dictation model \(id).")
         case let .unsupportedSoundFile(name):
-            "\(name) is not a sound file Pavarotti can play (WAV, AIFF, MP3, M4A or CAF)."
+            String(localized: "\(name) is not a sound file Pavarotti can play (WAV, AIFF, MP3, M4A or CAF).")
         }
     }
 }

@@ -8,8 +8,8 @@ import SwiftUI
 public struct DictationSettingsSection: View {
     let controller: DictationController
 
-    public static let title = "Dictation"
-    static let soundsTitle = "Dictation Sounds"
+    public static let title = String(localized: "Dictation")
+    static let soundsTitle = String(localized: "Dictation Sounds")
 
     public init(controller: DictationController) {
         self.controller = controller
@@ -87,7 +87,7 @@ public struct DictationSettingsSection: View {
     private var engineStatus: some View {
         switch controller.engineState {
         case .notInstalled:
-            statusText(Self.notInstalledText(controller.installPlan))
+            statusText(verbatim: Self.notInstalledText(controller.installPlan))
         case let .installing(fraction):
             ProgressView(value: fraction) {
                 statusText("Installing \(Int(fraction * 100)) %")
@@ -161,7 +161,14 @@ public struct DictationSettingsSection: View {
 
     // MARK: - Helpers
 
-    func statusText(_ text: String) -> some View {
+    func statusText(_ text: LocalizedStringKey) -> some View {
+        Text(text)
+            .font(Tokens.metadataFont)
+            .foregroundStyle(Tokens.secondaryText)
+    }
+
+    /// A caption that is already in the app's language.
+    func statusText(verbatim text: String) -> some View {
         Text(text)
             .font(Tokens.metadataFont)
             .foregroundStyle(Tokens.secondaryText)
@@ -169,10 +176,10 @@ public struct DictationSettingsSection: View {
 
     static func notInstalledText(_ plan: DictationInstallPlan) -> String {
         if plan.copiesModelFromTypeWhisper {
-            return "Not installed. TypeWhisper already has this model, so it is copied instead of downloaded."
+            return String(localized: "Not installed. TypeWhisper already has this model, so it is copied instead of downloaded.")
         }
         let size = ByteCountFormatter.string(fromByteCount: plan.downloadBytes, countStyle: .file)
-        return "Not installed. Installing downloads \(size)."
+        return String(localized: "Not installed. Installing downloads \(size).")
     }
 
     static func size(of model: CohereModel) -> String {

@@ -1,0 +1,5 @@
+/* German texts of Pavarotti's Info.plist: the permission prompts. */
+
+"NSMicrophoneUsageDescription" = "Pavarotti braucht Zugriff auf das Mikrofon, um deine Stimme für Diktate und Meetings aufzunehmen.";
+"NSAudioCaptureUsageDescription" = "Pavarotti braucht Zugriff auf das Systemaudio, um die anderen Teilnehmer eines Meetings aufzunehmen.";
+"NSCalendarsFullAccessUsageDescription" = "Pavarotti liest deinen Kalender, um anstehende Meetings zu zeigen und Aufnahmen mit Termindetails zu ergänzen.";

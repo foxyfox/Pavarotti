@@ -18,11 +18,11 @@ public enum FileTranscriptionError: Error, Equatable, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case let .unreadable(name):
-            "Pavarotti cannot read \u{201C}\(name)\u{201D}. Choose an audio or video file, such as M4A, MP3, WAV or MOV."
+            String(localized: "Pavarotti cannot read \u{201C}\(name)\u{201D}. Choose an audio or video file, such as M4A, MP3, WAV or MOV.")
         case let .noAudio(name):
-            "\u{201C}\(name)\u{201D} has no sound."
+            String(localized: "\u{201C}\(name)\u{201D} has no sound.")
         case let .nothingHeard(name):
-            "No speech was found in \u{201C}\(name)\u{201D}."
+            String(localized: "No speech was found in \u{201C}\(name)\u{201D}.")
         }
     }
 }

@@ -36,13 +36,13 @@ public struct Banner: View {
             Image(systemName: style == .warning ? "exclamationmark.triangle.fill" : "xmark.circle.fill")
                 .foregroundStyle(style == .warning ? .warningOchre : .signalRed)
 
-            Text(message)
+            Text(LocalizedStringKey(message))
                 .font(Tokens.metadataFont)
                 .foregroundStyle(.inkSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if let actionLabel, let action {
-                Button(actionLabel, action: action)
+                Button(LocalizedStringKey(actionLabel), action: action)
                     .buttonStyle(.borderless)
             }
         }

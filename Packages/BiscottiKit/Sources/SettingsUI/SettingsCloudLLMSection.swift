@@ -6,7 +6,7 @@ import SwiftUI
 /// Pavarotti: who writes summaries, titles and speaker names: the local model or a
 /// cloud API (Claude or an OpenAI-compatible server).
 struct CloudLLMSettingsSection: View {
-    static let title = "AI Provider"
+    static let title = String(localized: "AI Provider")
 
     let appCore: AppCore
     private let store: CloudLLMSettingsStore
@@ -74,9 +74,9 @@ struct CloudLLMSettingsSection: View {
     private var caption: String {
         switch settings.provider {
         case .local:
-            "Uses the downloaded model under AI Enhancements. Nothing leaves this Mac."
+            String(localized: "Uses the downloaded model under AI Enhancements. Nothing leaves this Mac.")
         case .anthropic, .openAICompatible:
-            "Each meeting\u{2019}s transcript and calendar details are sent to the provider to write its summary, title and speaker names. Recording and transcription stay on this Mac. The key is kept in the keychain."
+            String(localized: "Each meeting\u{2019}s transcript and calendar details are sent to the provider to write its summary, title and speaker names. Recording and transcription stay on this Mac. The key is kept in the keychain.")
         }
     }
 
@@ -100,7 +100,7 @@ struct CloudLLMSettingsSection: View {
             if key != nil {
                 apiKey = ""
                 hasKey = store.hasAPIKey(for: settings.provider)
-                message = "Saved."
+                message = String(localized: "Saved.")
             }
         } catch {
             message = error.localizedDescription
@@ -111,7 +111,7 @@ struct CloudLLMSettingsSection: View {
         do {
             try appCore.saveCloudLLM(settings, apiKey: "")
             hasKey = false
-            message = "The API key was removed."
+            message = String(localized: "The API key was removed.")
         } catch {
             message = error.localizedDescription
         }
@@ -120,7 +120,7 @@ struct CloudLLMSettingsSection: View {
     private func check() {
         save()
         isChecking = true
-        message = "Testing\u{2026}"
+        message = String(localized: "Testing\u{2026}")
         Task {
             message = await appCore.checkCloudLLM()
             isChecking = false

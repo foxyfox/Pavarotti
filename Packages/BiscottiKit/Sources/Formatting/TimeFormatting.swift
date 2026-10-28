@@ -12,17 +12,17 @@ public enum TimeFormatting {
         _ date: Date, relativeTo now: Date = Date()
     ) -> String {
         let interval = date.timeIntervalSince(now)
-        guard interval > 0 else { return "now" }
+        guard interval > 0 else { return String(localized: "now") }
         let totalMinutes = Int(ceil(interval / 60))
         if totalMinutes < 60 {
-            return "in \(totalMinutes)m"
+            return String(localized: "in \(totalMinutes)m")
         }
         let hours = totalMinutes / 60
         let remainingMinutes = totalMinutes % 60
         if remainingMinutes == 0 {
-            return "in \(hours)h"
+            return String(localized: "in \(hours)h")
         }
-        return "in \(hours)h \(remainingMinutes)m"
+        return String(localized: "in \(hours)h \(remainingMinutes)m")
     }
 
     /// Formats a future date as coarse relative text for upcoming countdowns.
@@ -36,20 +36,20 @@ public enum TimeFormatting {
         _ date: Date, relativeTo now: Date = Date()
     ) -> String {
         let interval = date.timeIntervalSince(now)
-        guard interval > 0 else { return "now" }
+        guard interval > 0 else { return String(localized: "now") }
 
         let totalMinutes = Int(ceil(interval / 60))
 
         // >= 1 day (1440 minutes)
         if totalMinutes >= 1440 {
             let days = totalMinutes / 1440
-            return days == 1 ? "in 1 day" : "in \(days) days"
+            return days == 1 ? String(localized: "in 1 day") : String(localized: "in \(days) days")
         }
 
         // > 3 hours (strictly over 180 minutes): whole hours only
         if totalMinutes > 180 {
             let totalHours = totalMinutes / 60
-            return "in \(totalHours)h"
+            return String(localized: "in \(totalHours)h")
         }
 
         // <= 3 hours: full precision (delegates to existing formatter)

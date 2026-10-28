@@ -1,4 +1,5 @@
 import Branding
+import Foundation
 
 /// The permission state for system-audio capture.
 ///
@@ -34,12 +35,13 @@ public enum SystemAudioPermissionState: String, Sendable, CaseIterable, Equatabl
     // MARK: - Fix-permissions alert copy (shared by Settings, Onboarding, and Stage 3)
 
     /// Alert title for the "Fix permissions" flow.
-    public static let fixPermissionsAlertTitle = "Allow \(AppName.display) to record system audio"
+    public static let fixPermissionsAlertTitle = String(localized: "Allow \(AppName.display) to record system audio")
 
     /// Alert body for the "Fix permissions" flow.
-    public static let fixPermissionsAlertBody =
-        "\(AppName.display) couldn\u{2019}t confirm permission to record your computer\u{2019}s audio. "
-            + "macOS doesn\u{2019}t let apps re-ask directly \u{2014} turn it on in "
-            + "System Settings: Privacy & Security \u{2192} System Audio Recording, "
-            + "enable \(AppName.display), then return and tap Retry."
+    public static let fixPermissionsAlertBody = String(localized: """
+    \(AppName.display) couldn\u{2019}t confirm permission to record your computer\u{2019}s audio. \
+    macOS doesn\u{2019}t let apps re-ask directly \u{2014} turn it on in \
+    System Settings: Privacy & Security \u{2192} System Audio Recording, \
+    enable \(AppName.display), then return and tap Retry.
+    """)
 }

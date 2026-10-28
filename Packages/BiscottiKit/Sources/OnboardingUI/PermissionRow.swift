@@ -43,11 +43,11 @@ struct PermissionRow<Trailing: View, Denial: View>: View {
 
                 // Name + why
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(name)
+                    Text(LocalizedStringKey(name))
                         .font(.system(size: 14.5, weight: .semibold))
                         .foregroundStyle(.ink)
 
-                    Text(why)
+                    Text(LocalizedStringKey(why))
                         .font(.system(size: 12.5))
                         .foregroundStyle(.inkSecondary)
                         .multilineTextAlignment(.leading)
@@ -106,7 +106,7 @@ struct GrantPill: View {
                     Image(systemName: systemImage)
                         .font(.system(size: 13, weight: .medium))
                 }
-                Text(title)
+                Text(LocalizedStringKey(title))
             }
         }
         .buttonStyle(JoinRecordButtonStyle())

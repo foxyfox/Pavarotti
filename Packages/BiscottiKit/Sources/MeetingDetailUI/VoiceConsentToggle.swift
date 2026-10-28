@@ -36,8 +36,8 @@ struct VoiceConsentToggle: View {
     private var helpText: String {
         if let consentDate {
             let noted = consentDate.formatted(date: .abbreviated, time: .omitted)
-            return "\(person.name) agreed to have their voice remembered (noted \(noted)). It names them in later meetings."
+            return String(localized: "\(person.name) agreed to have their voice remembered (noted \(noted)). It names them in later meetings.")
         }
-        return "Tick only if \(person.name) agreed to have their voice remembered. Until then it does not name them in later meetings."
+        return String(localized: "Tick only if \(person.name) agreed to have their voice remembered. Until then it does not name them in later meetings.")
     }
 }

@@ -63,7 +63,7 @@ public final class HomeViewModel {
     public var meetingsLeftText: String? {
         guard calendarAccess == .authorized else { return nil }
         let count = todaysMeetings.count
-        return "\(count) meeting\(count == 1 ? "" : "s") left today"
+        return count == 1 ? String(localized: "1 meeting left today") : String(localized: "\(count) meetings left today")
     }
 
     /// Coarse relative-time text for the soonest upcoming event, or nil.
