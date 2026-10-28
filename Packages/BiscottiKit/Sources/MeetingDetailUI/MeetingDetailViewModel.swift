@@ -1077,6 +1077,7 @@ public extension MeetingDetailViewModel {
             // Refresh the detail snapshot so `title` stays consistent
             detail = try await core.store.meetingDetail(id: meetingID)
             await core.reloadSummaries()
+            core.meetingNoteSourceChanged(meetingID: meetingID)
         } catch {
             // Non-fatal; title will be retried on next edit.
         }
@@ -1200,6 +1201,7 @@ private extension MeetingDetailViewModel {
                 summaryText, for: meetingID
             )
             editedSummary = true
+            core.meetingNoteSourceChanged(meetingID: meetingID)
         } catch {
             // Non-fatal; summary will be retried on next edit.
         }
@@ -1805,6 +1807,7 @@ public extension MeetingDetailViewModel {
     /// Reloads detail + rebuilds the transcript cache and refreshes
     /// the sheet data after a speaker assignment change.
     private func reloadAfterSpeakerChange() async {
+        core.meetingNoteSourceChanged(meetingID: meetingID)
         do {
             detail = try await core.store.meetingDetail(id: meetingID)
             versions = detail?.versions ?? []
