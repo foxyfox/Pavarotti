@@ -87,6 +87,7 @@ public struct DictationSettingsSection: View {
             Spacer()
             engineAction
         }
+        retentionRows
     }
 
     @ViewBuilder

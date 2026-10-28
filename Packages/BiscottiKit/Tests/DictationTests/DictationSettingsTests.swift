@@ -17,6 +17,7 @@ struct DictationSettingsTests {
         #expect(!settings.ducksAudio)
         #expect(settings.restoresClipboard)
         #expect(settings.bubble == BubbleAppearance(size: .compact, style: .glass, position: .bottom))
+        #expect(settings.modelRetention == .always)
     }
 
     @Test("round trip through JSON")
@@ -32,6 +33,7 @@ struct DictationSettingsTests {
         settings.learnsFromCorrections = false
         settings.microphone = MicrophoneDevice(id: "AppleUSBAudioEngine:Apple Inc.:Studio Display", name: "Studio Display Microphone")
         settings.bubble = BubbleAppearance(size: .minimal, style: .frosted, position: .top)
+        settings.modelRetention = .fifteenMinutes
         let data = try JSONEncoder().encode(settings)
         let decoded = try JSONDecoder().decode(DictationSettings.self, from: data)
         #expect(decoded == settings)
@@ -46,6 +48,16 @@ struct DictationSettingsTests {
         expected.duckingLevel = 0.5
         #expect(decoded == expected)
         #expect(decoded.microphone == nil)
+    }
+
+    @Test("the model stays loaded unless an idle limit is chosen")
+    func modelRetention() throws {
+        #expect(ModelRetention.always.idleLimit == nil)
+        #expect(ModelRetention.fiveMinutes.idleLimit == .seconds(300))
+        #expect(ModelRetention.fifteenMinutes.idleLimit == .seconds(900))
+        #expect(ModelRetention.oneHour.idleLimit == .seconds(3600))
+        let json = Data(#"{"modelRetention": "forever"}"#.utf8)
+        #expect(try JSONDecoder().decode(DictationSettings.self, from: json).modelRetention == .always)
     }
 
     @Test("settings saved before the bubble choices get the small glass bubble")

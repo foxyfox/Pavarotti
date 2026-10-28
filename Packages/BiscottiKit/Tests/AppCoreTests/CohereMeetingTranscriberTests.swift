@@ -36,6 +36,14 @@ struct CohereMeetingTranscriberTests {
         #expect(transcript.segments.isEmpty)
     }
 
+    @Test("Only Cohere models take meeting word times from the aligner")
+    func alignerOnlyForCohere() {
+        let engine = CohereDictationEngine()
+        #expect(engine.usesWordAligner(modelID: "cohere-transcribe-03-2026-q5_0"))
+        #expect(!engine.usesWordAligner(modelID: "parakeet-tdt-0.6b-v3-q4_k"))
+        #expect(engine.usesWordAligner(modelID: "unknown"))
+    }
+
     @Test("A missing Cohere model says where to install it")
     func missingModelMessage() {
         let message = MeetingTranscriptionError.speechModelNotInstalled.localizedDescription

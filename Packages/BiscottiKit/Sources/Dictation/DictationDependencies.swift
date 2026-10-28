@@ -100,9 +100,14 @@ public protocol DictationTranscribing: Sendable {
     ) async throws -> TimedTranscription
     /// Unloads the model.
     func shutdown() async
+    /// Unloads the model once it sat unused this long; `nil` keeps it loaded.
+    func setIdleUnload(after limit: Duration?) async
 }
 
 public extension DictationTranscribing {
+    /// Engines without a costly model ignore it.
+    func setIdleUnload(after _: Duration?) async {}
+
     func transcribeTimed(
         samples: [Float],
         sampleRate: Int,

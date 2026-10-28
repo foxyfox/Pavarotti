@@ -53,6 +53,9 @@ struct CohereMeetingTranscriber: Transcribing {
             throw MeetingTranscriptionError.speechModelNotInstalled
         }
         let samples = try AudioMerger.loadMerged(micPath: mic.path, systemPath: system.path)
+        // Sentences are matched to speakers by their words' times. `shutdown()` turns this
+        // off again once the batch is done.
+        await speech.setWordTimes(true)
         let heard = try await speech.transcribeLong(
             samples: samples,
             sampleRate: Int(AudioMerger.sampleRate),
@@ -70,8 +73,14 @@ struct CohereMeetingTranscriber: Transcribing {
 
     func shutdown() async {
         await transcriber.shutdown()
-        // Without dictation nothing else needs the Cohere server, so it gives its memory back.
-        if !settings().isEnabled {
+        // Dictation needs no word times, so the aligner leaves memory again.
+        await speech.setWordTimes(false)
+        let chosen = settings()
+        if chosen.isEnabled {
+            // Ready for the next dictation, now without the aligner.
+            try? await speech.prepare(modelID: chosen.modelID)
+        } else {
+            // Without dictation nothing else needs the speech server, so it gives its memory back.
             await speech.shutdown()
         }
     }

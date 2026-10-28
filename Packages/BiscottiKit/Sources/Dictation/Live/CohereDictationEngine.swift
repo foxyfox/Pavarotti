@@ -3,7 +3,8 @@ import Foundation
 import Synchronization
 
 /// Dictation on top of the local Cohere Transcribe server. Keeps one model loaded and
-/// switches when the selected model changes.
+/// switches when the selected model changes. With an idle limit set, the server stops
+/// after the model sat unused that long and starts again with the next request.
 public actor CohereDictationEngine: DictationTranscribing {
     /// The engine dictation, files and meetings share, so only one server and one model
     /// are ever loaded.
@@ -12,6 +13,13 @@ public actor CohereDictationEngine: DictationTranscribing {
     private let installer: CohereInstaller
     private var transcriber: CohereTranscriber?
     private var loadedModelID: String?
+    /// Whether a meeting is being transcribed and needs word times, see ``setWordTimes(_:)``.
+    private var wordTimes = false
+    /// How long the model may sit unused before the server stops; `nil` keeps it loaded.
+    private var idleLimit: Duration?
+    /// Requests and warm-ups running right now; the model is never unloaded under them.
+    private var activeUses = 0
+    private var idleTask: Task<Void, Never>?
 
     public init(installer: CohereInstaller = CohereInstaller()) {
         self.installer = installer
@@ -69,6 +77,8 @@ public actor CohereDictationEngine: DictationTranscribing {
     }
 
     public func prepare(modelID: String) async throws {
+        beginUse()
+        defer { endUse() }
         try await loadedTranscriber(for: modelID).warmUp()
     }
 
@@ -78,12 +88,13 @@ public actor CohereDictationEngine: DictationTranscribing {
         language: TranscriptionLanguage,
         modelID: String
     ) async throws -> String {
-        let result = try await loadedTranscriber(for: modelID).transcribe(
+        beginUse()
+        defer { endUse() }
+        return try await loadedTranscriber(for: modelID).transcribe(
             samples: samples,
             sampleRate: sampleRate,
             language: language
-        )
-        return result.text
+        ).text
     }
 
     public func transcribeTimed(
@@ -92,6 +103,8 @@ public actor CohereDictationEngine: DictationTranscribing {
         language: TranscriptionLanguage,
         modelID: String
     ) async throws -> TimedTranscription {
+        beginUse()
+        defer { endUse() }
         let result = try await loadedTranscriber(for: modelID).transcribe(
             samples: samples,
             sampleRate: sampleRate,
@@ -113,10 +126,56 @@ public actor CohereDictationEngine: DictationTranscribing {
     }
 
     public func shutdown() async {
+        idleTask?.cancel()
+        idleTask = nil
         let running = transcriber
         transcriber = nil
         loadedModelID = nil
         await running?.shutdown()
+    }
+
+    public func setIdleUnload(after limit: Duration?) async {
+        idleLimit = limit
+        scheduleIdleUnload()
+    }
+
+    /// Meetings need exact word times, which Cohere gets from the aligner; dictation and
+    /// files do not. While on, the server runs with the aligner and is never unloaded.
+    public func setWordTimes(_ wanted: Bool) async {
+        wordTimes = wanted
+        await transcriber?.setWordTimes(wanted)
+        scheduleIdleUnload()
+    }
+
+    /// Marks a use of the model, so an idle unload never cuts into it.
+    private func beginUse() {
+        activeUses += 1
+        idleTask?.cancel()
+        idleTask = nil
+    }
+
+    /// Ends a use and starts the idle countdown again once nothing uses the model.
+    private func endUse() {
+        activeUses -= 1
+        scheduleIdleUnload()
+    }
+
+    private func scheduleIdleUnload() {
+        idleTask?.cancel()
+        idleTask = nil
+        guard let idleLimit, transcriber != nil, activeUses == 0 else { return }
+        idleTask = Task { [weak self] in
+            try? await Task.sleep(for: idleLimit)
+            guard !Task.isCancelled else { return }
+            await self?.unloadIfIdle()
+        }
+    }
+
+    /// Stops the server when nothing uses it. The transcriber stays, so the next request
+    /// starts the server again.
+    private func unloadIfIdle() async {
+        guard activeUses == 0, !wordTimes, let transcriber else { return }
+        await transcriber.shutdown()
     }
 
     private func loadedTranscriber(for modelID: String) async throws -> CohereTranscriber {
@@ -124,7 +183,7 @@ public actor CohereDictationEngine: DictationTranscribing {
             return transcriber
         }
         let previous = transcriber
-        let created = try CohereTranscriber(model: Self.model(modelID), installer: installer)
+        let created = try CohereTranscriber(model: Self.model(modelID), installer: installer, wordTimes: wordTimes)
         transcriber = created
         loadedModelID = modelID
         await previous?.shutdown()
