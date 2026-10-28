@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 public extension TypeWhisperImport {
     /// Whether TypeWhisper is installed or left its preferences behind.
@@ -151,9 +152,23 @@ struct SoundSource {
 // MARK: - Controller
 
 public extension DictationController {
-    /// Whether the "Import from TypeWhisper" button makes sense.
-    var canImportFromTypeWhisper: Bool {
-        TypeWhisperImport.isAvailable
+    /// Takes over TypeWhisper's setup the first time Pavarotti finds it, see
+    /// ``TypeWhisperImport/LaunchImport``, and logs what it took over.
+    func importFromTypeWhisperOnce(defaults: UserDefaults = .standard) {
+        let plan = TypeWhisperImport.LaunchImport(
+            checkedBefore: defaults.bool(forKey: TypeWhisperImport.checkedKey),
+            available: TypeWhisperImport.isAvailable,
+            settingsSaved: store.hasSavedSettings
+        )
+        defaults.set(true, forKey: TypeWhisperImport.checkedKey)
+        let summary: String? = switch plan {
+        case .nothing: nil
+        case .dictionary: importTypeWhisperDictionary()
+        case .everything: importFromTypeWhisper()
+        }
+        if let summary {
+            Self.importLogger.info("TypeWhisper: \(summary, privacy: .public)")
+        }
     }
 
     /// Takes over TypeWhisper's sounds, ducking, shortcut and dictionary and returns a summary.
@@ -171,13 +186,42 @@ public extension DictationController {
         )
         update { $0 = outcome.settings }
         refreshCustomSounds()
-        let dictionaryPart = TypeWhisperImport.importDictionary(
+        guard let dictionaryPart = importTypeWhisperDictionary() else { return outcome.summary }
+        let nothingElse = outcome.imported.isEmpty && outcome.skipped.isEmpty
+        return nothingElse ? dictionaryPart : outcome.summary + " " + dictionaryPart
+    }
+
+    /// Adds the corrections from TypeWhisper's dictionary that Pavarotti's lacks; `nil`
+    /// when TypeWhisper has no dictionary.
+    private func importTypeWhisperDictionary() -> String? {
+        TypeWhisperImport.importDictionary(
             into: dependencies.dictionary,
             supportDirectory: TypeWhisperImport.supportDirectory
         )
-        guard let dictionaryPart else { return outcome.summary }
-        let nothingElse = outcome.imported.isEmpty && outcome.skipped.isEmpty
-        return nothingElse ? dictionaryPart : outcome.summary + " " + dictionaryPart
+    }
+
+    private static let importLogger = Logger(subsystem: "de.foxagon.pavarotti", category: "TypeWhisperImport")
+}
+
+public extension TypeWhisperImport {
+    static let checkedKey = "pavarotti.dictation.checkedTypeWhisper"
+
+    /// What to take over from TypeWhisper at launch. On a fresh install everything; on an
+    /// install whose settings were already saved only the dictionary, which adds just the
+    /// corrections Pavarotti lacks, so sounds, ducking and shortcut set in Pavarotti stay.
+    /// Runs once; after that only Pavarotti's own settings count.
+    enum LaunchImport: Equatable {
+        case nothing
+        case dictionary
+        case everything
+
+        init(checkedBefore: Bool, available: Bool, settingsSaved: Bool) {
+            if checkedBefore || !available {
+                self = .nothing
+            } else {
+                self = settingsSaved ? .dictionary : .everything
+            }
+        }
     }
 }
 
@@ -196,6 +240,9 @@ public extension TypeWhisperImport {
             case 0: break
             case 1: text += " 1 term left out, Cohere cannot use it."
             default: text += " \(contents.termCount) terms left out, Cohere cannot use them."
+            }
+            if !contents.leftOutLearned.isEmpty {
+                text += " Learned rewrites left out: \(contents.leftOutLearned.joined(separator: ", "))."
             }
             return text
         } catch {
