@@ -68,6 +68,13 @@ public struct MenuBarContentView: View {
                     systemImage: viewModel.recordActionIcon
                 )
             }
+            // Pavarotti: for a meeting that did not take place.
+            Button {
+                guard DiscardRecordingAlert.confirm() else { return }
+                Task { await viewModel.discardRecording() }
+            } label: {
+                Label("Discard Recording\u{2026}", systemImage: "trash")
+            }
         } else {
             Button {
                 Task { await viewModel.startRecording() }

@@ -518,3 +518,8 @@
 "%@ reads your schedule from the Mac’s Calendar app. Add your account there once and your calendars appear here automatically." = "%@ liest deine Termine aus der Kalender-App des Mac. Füge dein Konto dort einmal hinzu, dann erscheinen deine Kalender hier automatisch.";
 "Any app on this Mac can read your meetings while this is on. Nothing leaves your machine unless the agent you connect sends it somewhere." = "Solange das an ist, kann jede App auf diesem Mac deine Meetings lesen. Nichts verlässt deinen Rechner, außer der verbundene Agent schickt es weiter.";
 "%@ couldn’t confirm permission to record your computer’s audio. macOS doesn’t let apps re-ask directly — turn it on in System Settings: Privacy & Security → System Audio Recording, enable %@, then return and tap Retry." = "%@ konnte die Berechtigung zur Aufnahme des Computer-Audios nicht bestätigen. macOS lässt Apps nicht erneut fragen – schalte sie in den Systemeinstellungen ein: Datenschutz & Sicherheit → Bildschirm- & Systemaudioaufnahme, aktiviere %@, komm dann zurück und klicke auf „Erneut versuchen“.";
+"Stop the recording without saving it" = "Aufnahme beenden, ohne sie zu sichern";
+"Discard this recording?" = "Diese Aufnahme verwerfen?";
+"Discard Recording" = "Aufnahme verwerfen";
+"Discard Recording…" = "Aufnahme verwerfen…";
+"The recording stops and is deleted with its notes. Nothing is transcribed." = "Die Aufnahme wird beendet und mit ihren Notizen gelöscht. Es wird nichts transkribiert.";
