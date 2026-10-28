@@ -2039,3 +2039,33 @@ extension AppCore {
         }
     }
 }
+
+// MARK: - Discarding a recording
+
+// Pavarotti: in this file because it resets the recording state that `stopRecording()`
+// resets, which is private to the class.
+public extension AppCore {
+    /// Stops the recording and deletes it with its audio and notes, for a meeting that
+    /// did not take place. Unlike `stopRecording()`, nothing is transcribed and no
+    /// meeting note is written; the app goes back to Home.
+    @discardableResult
+    func discardRecording() async -> UUID? {
+        if case let .recording(meetingID) = runState {
+            cancelAutoStopCountdown(meetingID: meetingID)
+        }
+        guard let meetingID = await recording.stop() else { return nil }
+
+        activeDetectedBundleID = nil
+        pendingStartupEventKey = nil
+        pendingStartupTitle = nil
+        startupGeneration &+= 1
+        recordingStartup = nil
+        runState = .idle
+
+        _ = await deleteSingleMeetingInternal(meetingID: meetingID)
+        await reloadSummaries()
+        route = .home
+        MemoryPressure.relieve(after: 4, reason: "recording-discard")
+        return meetingID
+    }
+}

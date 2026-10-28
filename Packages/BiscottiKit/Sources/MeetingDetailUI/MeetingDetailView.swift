@@ -1041,6 +1041,12 @@ private extension MeetingDetailView {
             Text("Transcription empty")
                 .font(.system(size: 15))
                 .foregroundStyle(.inkSecondary)
+            // Pavarotti: nothing was said, so the meeting likely did not take place.
+            Button("Delete Meeting\u{2026}") {
+                viewModel.showDeleteConfirmation = true
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.small)
             Spacer()
         }
         .frame(maxWidth: .infinity)

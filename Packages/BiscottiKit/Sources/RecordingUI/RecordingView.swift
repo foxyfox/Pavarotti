@@ -180,6 +180,7 @@ public struct RecordingView: View {
         HStack {
             recordingBadge
             Spacer()
+            DiscardRecordingButton(viewModel: viewModel)
             stopButton
         }
     }

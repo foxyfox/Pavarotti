@@ -115,6 +115,11 @@ public final class MenuBarViewModel {
         await core.stopRecording()
     }
 
+    /// Pavarotti: stops the recording and deletes it, for a meeting that did not take place.
+    public func discardRecording() async {
+        await core.discardRecording()
+    }
+
     /// Open the main window and navigate to an upcoming event's page.
     /// Sets the route FIRST (so the new window reflects the right page),
     /// then calls `windowOpener` which routes through

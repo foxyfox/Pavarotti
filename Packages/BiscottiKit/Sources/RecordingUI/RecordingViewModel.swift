@@ -432,3 +432,11 @@ public final class RecordingViewModel {
         formatChipTime(seconds)
     }
 }
+
+// Pavarotti: in this file because it uses the private `core`.
+public extension RecordingViewModel {
+    /// Stops the recording and deletes it, for a meeting that did not take place.
+    func discard() async {
+        await core.discardRecording()
+    }
+}
