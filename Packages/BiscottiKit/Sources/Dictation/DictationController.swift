@@ -85,6 +85,7 @@ public final class DictationController {
         refreshAccessibility()
         refreshCustomSounds()
         refreshEngineState()
+        applyModelRetention()
         if settings.isEnabled {
             loadEngine()
         }
@@ -143,6 +144,7 @@ public final class DictationController {
         }
         failureTask?.cancel()
         phase = .listening
+        warmUpWhileListening()
         limitTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(Self.maximumDuration))
             guard let self, !Task.isCancelled, session == current else { return }
@@ -315,6 +317,9 @@ public extension DictationController {
         }
         if previous.modelID != next.modelID || previous.isEnabled != next.isEnabled {
             engineSettingsChanged()
+        }
+        if previous.modelRetention != next.modelRetention {
+            applyModelRetention()
         }
     }
 

@@ -9,10 +9,18 @@ public actor CohereTranscriber {
     public let model: CohereModel
     public let installer: CohereInstaller
     private var server: CrispASRServer?
+    /// Whether answers should carry exact word times from the aligner, see
+    /// ``setWordTimes(_:)``.
+    private var wantsWordTimes = false
 
-    public init(model: CohereModel = .recommended, installer: CohereInstaller = CohereInstaller()) {
+    public init(
+        model: CohereModel = .recommended,
+        installer: CohereInstaller = CohereInstaller(),
+        wordTimes: Bool = false
+    ) {
         self.model = model
         self.installer = installer
+        wantsWordTimes = wordTimes
     }
 
     /// Whether the runtime and the model are on disk.
@@ -44,10 +52,25 @@ public actor CohereTranscriber {
         return try await transcribe(audio: audio, filename: "dictation.wav", language: language)
     }
 
+    /// Meetings need exact word times from the aligner to match words to speakers;
+    /// dictation does not, and the aligner costs about 400 MB and time on every request.
+    /// A server started the other way stops here; the next request starts it again.
+    public func setWordTimes(_ wanted: Bool) async {
+        guard wanted != wantsWordTimes else { return }
+        wantsWordTimes = wanted
+        if let server, server.configuration.wordAligner != wordAlignerPath {
+            self.server = nil
+            await server.stop()
+        }
+    }
+
     /// Stops the server and frees the model's memory.
     public func shutdown() async {
-        await server?.stop()
+        // Forgotten before stopping, so a request that comes in meanwhile starts a new
+        // server instead of reviving this one.
+        let running = server
         server = nil
+        await running?.stop()
     }
 
     // MARK: - Private
@@ -99,17 +122,26 @@ public actor CohereTranscriber {
     }
 
     private func runningServer() async throws -> CrispASRServer {
-        if let server, server.configuration.wordAligner == nil, model.backend.usesWordAligner,
-           installer.isInstalled(CohereAssetCatalog.wordAligner)
-        {
-            // The aligner was installed while the server ran; restart so it takes part.
-            await server.stop()
+        if let server, server.configuration.wordAligner != wordAlignerPath {
+            // Word times were switched, or the aligner was installed while the server ran.
             self.server = nil
+            await server.stop()
         }
         let running = try server ?? makeServer()
         server = running
         try await running.start()
         return running
+    }
+
+    /// The aligner the server should run with: only while word times are wanted, for a
+    /// model that takes them from the aligner, and once it is installed.
+    private var wordAlignerPath: URL? {
+        guard wantsWordTimes, model.backend.usesWordAligner,
+              installer.isInstalled(CohereAssetCatalog.wordAligner)
+        else {
+            return nil
+        }
+        return installer.root.appending(path: CohereAssetCatalog.wordAligner.relativePath)
     }
 
     private func makeServer() throws -> CrispASRServer {
@@ -127,9 +159,7 @@ public actor CohereTranscriber {
             languageIdentificationModel: model.backend.detectsLanguage
                 ? nil
                 : root.appending(path: CohereAssetCatalog.languageIdentificationModel.relativePath),
-            wordAligner: model.backend.usesWordAligner && installer.isInstalled(CohereAssetCatalog.wordAligner)
-                ? root.appending(path: CohereAssetCatalog.wordAligner.relativePath)
-                : nil,
+            wordAligner: wordAlignerPath,
             cacheDirectory: root.appending(path: "Cache", directoryHint: .isDirectory)
         )
         return CrispASRServer(configuration: configuration)

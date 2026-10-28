@@ -265,6 +265,39 @@ struct DictationControllerTests {
         #expect(harness.engine.state.withLock { $0.prepared } == [CohereModel.recommended.id])
     }
 
+    @Test("activating tells the engine how long to keep the model")
+    func activatePassesRetention() async {
+        let harness = DictationHarness { $0.modelRetention = .fifteenMinutes }
+        defer { harness.tearDown() }
+
+        harness.controller.activate()
+        #expect(await eventually { harness.engine.state.withLock { $0.idleLimits } == [.seconds(900)] })
+
+        harness.controller.update { $0.modelRetention = .always }
+        #expect(await eventually { harness.engine.state.withLock { $0.idleLimits } == [.seconds(900), nil] })
+    }
+
+    @Test("with idle unloading, listening loads the model again")
+    func listeningWarmsUpTheModel() async {
+        let harness = DictationHarness { $0.modelRetention = .fiveMinutes }
+        defer { harness.tearDown() }
+
+        #expect(await harness.startListening())
+        #expect(await eventually { harness.engine.state.withLock { $0.prepared } == [CohereModel.recommended.id] })
+    }
+
+    @Test("a model kept loaded is not warmed up again on every dictation")
+    func noWarmUpWhenKeptLoaded() async {
+        let harness = DictationHarness()
+        defer { harness.tearDown() }
+
+        #expect(await harness.startListening())
+        harness.audio.samples = FakeAudioSource.speech(seconds: 1)
+        harness.controller.stop()
+        await harness.controller.waitForWork()
+        #expect(harness.engine.state.withLock { $0.prepared }.isEmpty)
+    }
+
     @Test("installing a missing model loads it afterwards")
     func installThenLoad() async {
         let harness = DictationHarness()

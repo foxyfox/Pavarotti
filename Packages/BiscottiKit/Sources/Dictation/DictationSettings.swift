@@ -42,6 +42,8 @@ public struct DictationSettings: Codable, Equatable, Sendable {
     public var microphone: MicrophoneDevice?
     /// How the recording bubble looks and where it appears.
     public var bubble = BubbleAppearance()
+    /// How long the speech model stays in memory without being used.
+    public var modelRetention = ModelRetention.always
 
     public init() {}
 
@@ -65,6 +67,7 @@ public struct DictationSettings: Codable, Equatable, Sendable {
         learnsFromCorrections = container.value(.learnsFromCorrections, default: defaults.learnsFromCorrections)
         microphone = container.value(.microphone, default: defaults.microphone)
         bubble = container.value(.bubble, default: defaults.bubble)
+        modelRetention = container.value(.modelRetention, default: defaults.modelRetention)
     }
 }
 

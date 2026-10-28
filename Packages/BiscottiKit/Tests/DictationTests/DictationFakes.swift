@@ -68,6 +68,7 @@ final class FakeEngine: DictationTranscribing {
         var prepared: [String] = []
         var installed: [String] = []
         var shutdownCount = 0
+        var idleLimits: [Duration?] = []
         /// Per model; others download 1 MB and are not in TypeWhisper.
         var plans: [String: DictationInstallPlan] = [:]
         /// Answers of `transcribeTimed`, in order. Once used up, the text becomes one
@@ -134,6 +135,10 @@ final class FakeEngine: DictationTranscribing {
 
     func shutdown() async {
         state.withLock { $0.shutdownCount += 1 }
+    }
+
+    func setIdleUnload(after limit: Duration?) async {
+        state.withLock { $0.idleLimits.append(limit) }
     }
 }
 
