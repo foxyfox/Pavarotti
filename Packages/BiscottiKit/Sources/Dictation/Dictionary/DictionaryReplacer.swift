@@ -13,18 +13,45 @@ public enum DictionaryReplacer {
     }
 
     public static func apply(_ entries: [DictionaryEntry], to text: String) -> Result {
-        let active = entries
-            .filter { $0.isEnabled && !$0.original.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            .sorted { $0.original.count > $1.original.count }
+        apply(Rules(entries), to: text)
+    }
+
+    /// One enabled entry, compiled.
+    struct Rule {
+        let id: UUID
+        let regex: NSRegularExpression
+        let template: String
+    }
+
+    /// The enabled entries compiled once, longest original first, for applying them to
+    /// many texts, such as every sentence and word of a meeting.
+    public struct Rules {
+        let rules: [Rule]
+
+        public var isEmpty: Bool {
+            rules.isEmpty
+        }
+
+        public init(_ entries: [DictionaryEntry]) {
+            rules = entries
+                .filter { $0.isEnabled && !$0.original.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                .sorted { $0.original.count > $1.original.count }
+                .compactMap { entry in
+                    DictionaryReplacer.expression(for: entry.original).map {
+                        Rule(id: entry.id, regex: $0, template: NSRegularExpression.escapedTemplate(for: entry.replacement))
+                    }
+                }
+        }
+    }
+
+    public static func apply(_ rules: Rules, to text: String) -> Result {
         var current = text
         var used = Set<UUID>()
-        for entry in active {
-            guard let regex = expression(for: entry.original) else { continue }
+        for rule in rules.rules {
             let range = NSRange(current.startIndex..., in: current)
-            guard regex.firstMatch(in: current, range: range) != nil else { continue }
-            let template = NSRegularExpression.escapedTemplate(for: entry.replacement)
-            current = regex.stringByReplacingMatches(in: current, range: range, withTemplate: template)
-            used.insert(entry.id)
+            guard rule.regex.firstMatch(in: current, range: range) != nil else { continue }
+            current = rule.regex.stringByReplacingMatches(in: current, range: range, withTemplate: rule.template)
+            used.insert(rule.id)
         }
         return Result(text: current, usedEntryIDs: used)
     }

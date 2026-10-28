@@ -15,15 +15,19 @@ struct CohereMeetingTranscriber: Transcribing {
     let speech: CohereDictationEngine
     /// The dictation settings, which choose the model and language for meetings too.
     let settings: @Sendable () -> DictationSettings
+    /// The personal dictionary's entries, which correct meetings as they correct dictation.
+    let dictionary: @Sendable () -> [DictionaryEntry]
 
     init(
         transcriber: Transcriber,
         speech: CohereDictationEngine = .shared,
-        settings: @escaping @Sendable () -> DictationSettings = { DictationSettingsStore.load() }
+        settings: @escaping @Sendable () -> DictationSettings = { DictationSettingsStore.load() },
+        dictionary: @escaping @Sendable () -> [DictionaryEntry] = { PersonalDictionary.storedEntries() }
     ) {
         self.transcriber = transcriber
         self.speech = speech
         self.settings = settings
+        self.dictionary = dictionary
     }
 
     /// Whether the chosen model gets its word times from the aligner. Parakeet times the
@@ -45,8 +49,8 @@ struct CohereMeetingTranscriber: Transcribing {
         }
     }
 
-    // TODO: Cohere takes no vocabulary prompt. Apply the personal dictionary to meeting
-    // transcripts instead, as dictation and file transcription do.
+    /// Cohere takes no vocabulary prompt, so the personal dictionary corrects the finished
+    /// transcript instead, as it does for dictation.
     func processAudio(mic: URL, system: URL, customVocabulary _: [String]) async throws -> TranscriptResult {
         let chosen = settings()
         guard speech.isInstalled(modelID: chosen.modelID) else {
@@ -63,7 +67,8 @@ struct CohereMeetingTranscriber: Transcribing {
             modelID: chosen.modelID
         )
         let transcript = ProvidedTranscript(heard, modelID: chosen.modelID)
-        return try await transcriber.processAudio(mic: mic, system: system, transcript: transcript)
+        let result = try await transcriber.processAudio(mic: mic, system: system, transcript: transcript)
+        return result.correcting(with: DictionaryReplacer.Rules(dictionary()))
     }
 
     func modelsPresent() async -> Bool {
@@ -112,6 +117,46 @@ extension ProvidedTranscript {
                     words: passage.words.map { Word(text: $0.text, start: $0.start, end: $0.end) }
                 )
             }
+        )
+    }
+}
+
+extension TranscriptResult {
+    /// The transcript with the dictionary's corrections in every segment's text and in its
+    /// words, one word at a time (an original of several words changes only the text).
+    func correcting(with rules: DictionaryReplacer.Rules) -> TranscriptResult {
+        guard !rules.isEmpty else { return self }
+        let corrected = segments.map { segment in
+            TranscriptSegment(
+                id: segment.id,
+                speakerID: segment.speakerID,
+                speakerLabel: segment.speakerLabel,
+                startTime: segment.startTime,
+                endTime: segment.endTime,
+                text: DictionaryReplacer.apply(rules, to: segment.text).text,
+                confidence: segment.confidence,
+                noSpeechProbability: segment.noSpeechProbability,
+                words: segment.words?.map { word in
+                    TranscriptWord(
+                        word: DictionaryReplacer.apply(rules, to: word.word).text,
+                        startTime: word.startTime,
+                        endTime: word.endTime,
+                        probability: word.probability,
+                        speakerID: word.speakerID
+                    )
+                }
+            )
+        }
+        return TranscriptResult(
+            id: id,
+            createdAt: createdAt,
+            transcriptionMethodId: transcriptionMethodId,
+            language: language,
+            speakerCount: speakerCount,
+            segments: corrected,
+            embeddingSets: embeddingSets,
+            speakerSpeechDurations: speakerSpeechDurations,
+            processingDuration: processingDuration
         )
     }
 }
