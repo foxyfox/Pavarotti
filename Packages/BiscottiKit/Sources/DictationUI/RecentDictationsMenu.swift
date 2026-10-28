@@ -9,9 +9,6 @@ public struct RecentDictationsMenu: View {
     /// Opens the main window's Dictations page, which lists them all.
     let onShowAll: (@MainActor () -> Void)?
 
-    /// How many dictations the menu lists.
-    static let menuCount = 15
-
     public init(controller: DictationController, onShowAll: (@MainActor () -> Void)? = nil) {
         self.controller = controller
         self.onShowAll = onShowAll
@@ -22,7 +19,7 @@ public struct RecentDictationsMenu: View {
         if controller.settings.isEnabled, !entries.isEmpty {
             Menu("Recent Dictations") {
                 Text("Click a dictation to copy it")
-                ForEach(entries.prefix(Self.menuCount)) { entry in
+                ForEach(entries) { entry in
                     Button(entry.menuTitle()) {
                         Self.copy(entry.text)
                     }

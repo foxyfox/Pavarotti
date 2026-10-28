@@ -19,6 +19,29 @@ struct DictationHistoryTests {
         #expect(history.entries.isEmpty)
     }
 
+    @Test("a longer history from before is cut to the newest ones on disk too")
+    func trimsOldHistory() throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "pavarotti-history-test-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let fileURL = folder.appending(path: "dictation-history.json")
+        let start = Date(timeIntervalSince1970: 1_790_000_000)
+        let old = (1 ... 25).reversed().map { number in
+            DictationHistoryEntry(date: start.addingTimeInterval(Double(number)), text: "Diktat \(number)")
+        }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try encoder.encode(["entries": old]).write(to: fileURL)
+
+        let history = DictationHistory(fileURL: fileURL)
+
+        #expect(DictationHistory.limit == 10)
+        #expect(history.entries.map(\.text) == (16 ... 25).reversed().map { "Diktat \($0)" })
+        let saved = try String(contentsOf: fileURL, encoding: .utf8)
+        #expect(!saved.contains("\"Diktat 15\""))
+        #expect(DictationHistory(fileURL: fileURL).entries.count == 10)
+    }
+
     @Test("one dictation can be removed, also after a restart")
     func remove() throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: "pavarotti-history-test-\(UUID().uuidString)")
