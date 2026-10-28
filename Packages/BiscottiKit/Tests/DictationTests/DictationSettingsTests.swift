@@ -25,7 +25,7 @@ struct DictationSettingsTests {
         var settings = DictationSettings()
         settings.shortcut = .combination(keyCode: 2, modifiers: [.command, .shift], keyLabel: "D")
         settings.mode = .toggle
-        settings.language = .german
+        settings.language = try #require(TranscriptionLanguage(rawValue: "fr"))
         settings.startSound = .file("TypeWhisper recording_start.wav")
         settings.doneSound = .none
         settings.ducksAudio = true
@@ -48,6 +48,21 @@ struct DictationSettingsTests {
         expected.duckingLevel = 0.5
         #expect(decoded == expected)
         #expect(decoded.microphone == nil)
+    }
+
+    @Test("a language the new model does not know falls back to automatic")
+    func modelChangeKeepsKnownLanguages() throws {
+        var settings = DictationSettings()
+        settings.modelID = CohereModel.small.id
+        settings.language = try #require(TranscriptionLanguage(rawValue: "sv"))
+        settings.modelID = CohereModel.small.id
+        #expect(settings.language.rawValue == "sv")
+        settings.modelID = CohereModel.fast.id
+        #expect(settings.language == .automatic)
+
+        settings.language = .german
+        settings.modelID = CohereModel.small.id
+        #expect(settings.language == .german)
     }
 
     @Test("the model stays loaded unless an idle limit is chosen")

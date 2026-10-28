@@ -22,8 +22,21 @@ public struct CohereModel: Sendable, Hashable, Identifiable {
         /// Whether the model finds the language on its own. Parakeet ignores the requested
         /// language and writes what it hears, so asking again in another language changes
         /// nothing, and the server's language ID is not needed.
-        var detectsLanguage: Bool {
+        public var detectsLanguage: Bool {
             self == .parakeet
+        }
+
+        /// The languages the model transcribes, as ISO 639-1 codes, from the model cards.
+        public var languages: [String] {
+            switch self {
+            case .cohere:
+                ["en", "fr", "de", "it", "es", "pt", "el", "nl", "pl", "zh", "ja", "ko", "vi", "ar"]
+            case .parakeet:
+                [
+                    "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it",
+                    "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"
+                ]
+            }
         }
     }
 
@@ -97,6 +110,16 @@ public struct CohereModel: Sendable, Hashable, Identifiable {
     public static let all: [CohereModel] = [small, compact, fast, precise, maximum]
 
     public static let recommended = fast
+
+    /// The languages the model transcribes, as ISO 639-1 codes.
+    public var languages: [String] {
+        backend.languages
+    }
+
+    /// Whether the model can transcribe in `language`; automatic always works.
+    public func supports(_ language: TranscriptionLanguage) -> Bool {
+        language.code.map { languages.contains($0) } ?? true
+    }
 
     /// Looks a model up by ``id``.
     public static func model(id: String) -> CohereModel? {
