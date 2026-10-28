@@ -122,13 +122,15 @@ public enum VoiceprintEvidence {
             kind: .raw, space: space, excludingMeetingID: meetingID
         )
         // Pavarotti: voices taken over from TypeWhisper count like one named meeting each.
+        var ownVoicePerson: UUID?
         if let imported {
-            stored = try await ImportedVoiceCorpus.corpus(stored, adding: imported, store: store)
+            (stored, ownVoicePerson) = try await ImportedVoiceCorpus.corpus(stored, adding: imported, store: store)
         }
         // Pavarotti: only voices with consent (and the user's own) name speakers.
         var allowed: Set<UUID>?
         if let consent {
             allowed = await VoiceConsentFilter.allowedPersonIDs(consent: consent, store: store)
+                .union(ownVoicePerson.map { [$0] } ?? [])
         }
         let corpusData = allowed.map { VoiceConsentFilter.corpus(stored, allowing: $0) } ?? stored
         let corpus = await Task.detached(priority: .userInitiated) {

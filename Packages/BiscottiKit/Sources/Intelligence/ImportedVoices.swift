@@ -1,5 +1,6 @@
 import DataStore
 import Foundation
+import VoiceprintMatching
 
 /// Pavarotti: a voice taken over from TypeWhisper. In voice matching it counts like one
 /// meeting in which the user named the speaker, so on its own it names someone with at
@@ -7,7 +8,7 @@ import Foundation
 public struct ImportedVoice: Codable, Equatable, Sendable, Identifiable {
     public let id: UUID
     /// The person the voice belongs to; `nil` for the user's own voice, which goes to
-    /// whoever the calendar marks as the user.
+    /// whoever the calendar marks as the user, else to the named speaker it sounds like.
     public let personID: UUID?
     public let name: String
     public let vector: [Float]
@@ -72,19 +73,46 @@ enum ImportedVoiceCorpus {
     /// The meeting title the voice debug window shows for an imported voice.
     static let meetingTitle = "TypeWhisper voice profile"
 
-    /// The corpus with the voices from `store` added, their people looked up.
+    /// How similar (cosine) the own voice must be to a speaker the user named to go to
+    /// that person when the calendar marks nobody as the user: the matcher's accept radius.
+    static let ownVoiceSimilarity = 1 - Double(VoiceprintConfig().thresholds.acceptRadius)
+
+    /// The corpus with the voices from `store` added, their people looked up, and the
+    /// person who got the user's own voice.
     static func corpus(
         _ corpus: VoiceprintCorpusData, adding imported: ImportedVoiceStore, store: DataStore
-    ) async throws -> VoiceprintCorpusData {
+    ) async throws -> (corpus: VoiceprintCorpusData, user: UUID?) {
         let voices = imported.load()
-        guard !voices.isEmpty else { return corpus }
+        guard !voices.isEmpty else { return (corpus, nil) }
         var user: UUID?
-        if voices.contains(where: { $0.personID == nil }) {
+        if let own = voices.first(where: { $0.personID == nil }) {
+            let named = corpus.entries.compactMap { entry -> (personID: UUID, vector: [Float])? in
+                guard let tag = entry.tag, tag.userSet else { return nil }
+                return (tag.personID, entry.vector)
+            }
             user = try await store.mostFrequentCurrentUserPersonID()
+                ?? ownVoicePerson(own, voices: voices, named: named)
         }
         let ids = Set(voices.compactMap(\.personID)).union(user.map { [$0] } ?? [])
         let people = try await store.people(ids: ids)
-        return Self.corpus(corpus, adding: voices, people: people, user: user)
+        return (Self.corpus(corpus, adding: voices, people: people, user: user), user)
+    }
+
+    /// The person whose speakers, as the user named them, sound most like the own voice
+    /// `own`: at least `ownVoiceSimilarity` alike. People with an imported voice of their
+    /// own are left out. `nil` when nobody is that close.
+    static func ownVoicePerson(
+        _ own: ImportedVoice, voices: [ImportedVoice], named: [(personID: UUID, vector: [Float])]
+    ) -> UUID? {
+        let others = Set(voices.compactMap(\.personID))
+        var best: (personID: UUID, similarity: Double)?
+        for (personID, vector) in named where !others.contains(personID) {
+            guard let similarity = TypeWhisperVoiceImport.cosine(own.vector, vector),
+                  similarity >= ownVoiceSimilarity, similarity > best?.similarity ?? -1
+            else { continue }
+            best = (personID, similarity)
+        }
+        return best?.personID
     }
 
     /// The corpus with one confirmed entry per voice whose person exists and whose

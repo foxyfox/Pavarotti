@@ -248,4 +248,64 @@ struct TypeWhisperVoiceImportTests {
         #expect(match.candidates.map(\.personID) == [laura])
         #expect(result.block.contains("Laura"))
     }
+
+    // MARK: - The own voice without the calendar
+
+    @Test("Without a calendar user, the own voice goes to the named speaker it sounds like")
+    func ownVoiceFindsNamedSpeaker() {
+        let andreas = UUID()
+        let laura = UUID()
+        let own = ImportedVoice(id: UUID(), personID: nil, name: "You", vector: [0, 0, 1, 0], model: "m",
+                                samples: 15, speechSeconds: 42, updatedAt: Date())
+        let lauraVoice = ImportedVoice(id: UUID(), personID: laura, name: "Laura", vector: [1, 0, 0, 0],
+                                       model: "m", samples: 4, speechSeconds: 310, updatedAt: Date())
+        let voices = [lauraVoice, own]
+
+        func person(_ named: [(personID: UUID, vector: [Float])]) -> UUID? {
+            ImportedVoiceCorpus.ownVoicePerson(own, voices: voices, named: named)
+        }
+
+        #expect(person([(laura, [1, 0, 0, 0]), (andreas, [0, 0.6, 0.8, 0]), (andreas, [0, 0, 1, 0])]) == andreas)
+        // Too far apart (cosine 0.45 < 0.5): the voice stays unassigned.
+        #expect(person([(andreas, [0, 0.893, 0.45, 0])]) == nil)
+        // Someone with an imported voice of their own is never the user.
+        #expect(person([(laura, [0, 0, 1, 0])]) == nil)
+        #expect(person([]) == nil)
+    }
+
+    @Test("The import finds the user by voice when the calendar marks nobody")
+    func importFindsUserByVoice() async throws {
+        let store = try DataStore(storage: .inMemory)
+        let andreas = try await store.findOrCreatePerson(name: "Andreas", email: nil)
+        _ = try await Self.makeMeeting(in: store, vector: [0, 0.2, 0.98, 0], person: andreas)
+        try writeProfiles()
+
+        let outcome = try await run(store)
+
+        #expect(outcome.userKnown)
+        #expect(outcome.comparisons.map(\.name) == ["you"])
+        #expect(!outcome.summary.contains("name yourself"))
+    }
+
+    @Test("Without a calendar user, the own voice names the user, even without a consent note")
+    func ownVoiceMatchesWithoutCalendar() async throws {
+        let store = try DataStore(storage: .inMemory)
+        let andreas = try await store.findOrCreatePerson(name: "Andreas", email: nil)
+        _ = try await Self.makeMeeting(in: store, vector: [0, 0.2, 0.98, 0], person: andreas)
+        try writeProfiles()
+        _ = try await run(store)
+        let (meetingID, _) = try await Self.makeMeeting(in: store, vector: [0, 0.05, 0.99, 0])
+        let detail = try #require(try await store.meetingDetail(id: meetingID))
+        let transcript = try #require(detail.preferredTranscript)
+
+        let result = try await VoiceprintEvidence.compute(
+            store: store, meetingID: meetingID, transcript: transcript, detail: detail,
+            human: [:], consent: consent, imported: voices
+        )
+
+        #expect(consent.consentDate(for: andreas) == nil)
+        let match = try #require(result.matches[0])
+        #expect(match.candidates.first?.personID == andreas)
+        #expect(result.corpus.people[andreas]?.name == "Andreas")
+    }
 }
