@@ -43,29 +43,29 @@ public struct SettingsView: View {
     /// is driven from this array (`sectionTitles[N]`), so reordering here
     /// reorders the rendered headers. Debug is appended in debug builds.
     static let sectionTitles = [
-        "General",
-        "Permissions",
-        "Notifications",
-        "AI Enhancements",
-        "Custom Vocabulary",
-        "Import/Export",
-        "Calendars"
+        String(localized: "General"),
+        String(localized: "Permissions"),
+        String(localized: "Notifications"),
+        String(localized: "AI Enhancements"),
+        String(localized: "Custom Vocabulary"),
+        String(localized: "Import/Export"),
+        String(localized: "Calendars")
     ]
 
     /// Muted caption trailing the AI Enhancements header.
-    static let aiEnhancementsHeaderCaption = "AI runs locally on your Mac."
+    static let aiEnhancementsHeaderCaption = String(localized: "AI runs locally on your Mac.")
 
     /// Muted caption trailing the Custom Vocabulary header, marking the
     /// feature as in beta. Same treatment as `aiEnhancementsHeaderCaption`.
-    static let customVocabularyHeaderCaption = "Beta"
+    static let customVocabularyHeaderCaption = String(localized: "Beta")
 
     /// Page-level heading, styled like content-page serif titles
     /// (EventPreview, MeetingDetail).
-    static let pageTitle = "Settings"
+    static let pageTitle = String(localized: "Settings")
 
     /// Pavarotti: the section on the Meetings page with the recording rows that
     /// upstream keeps under General.
-    static let recordingSectionTitle = "Recording"
+    static let recordingSectionTitle = String(localized: "Recording")
 
     public var body: some View {
         ScrollView {
@@ -100,6 +100,8 @@ public struct SettingsView: View {
 
     private var generalSection: some View {
         Section(Self.sectionTitles[0]) {
+            // Pavarotti: the app's language comes first.
+            appLanguageRow
             Toggle(
                 "Launch at login",
                 isOn: launchAtLoginBinding
@@ -172,11 +174,11 @@ public struct SettingsView: View {
                 state == .authorized ? .sage : .warningOchre
             )
 
-            Text(label)
+            Text(LocalizedStringKey(label))
 
             Spacer()
 
-            Text(state.displayText)
+            Text(LocalizedStringKey(state.displayText))
                 .font(Tokens.metadataFont)
                 .foregroundStyle(Tokens.secondaryText)
 
@@ -300,7 +302,7 @@ private extension SettingsView {
                 selection: menuBarLeadTimeBinding
             ) {
                 ForEach(MenuBarLeadTime.allCases) { option in
-                    Text(option.displayText).tag(option)
+                    Text(LocalizedStringKey(option.displayText)).tag(option)
                 }
             }
         }
@@ -459,7 +461,7 @@ private extension SettingsView {
                     selection: calendarNotificationModeBinding
                 ) {
                     ForEach(CalendarNotificationMode.allCases) { mode in
-                        Text(mode.displayText).tag(mode)
+                        Text(LocalizedStringKey(mode.displayText)).tag(mode)
                     }
                 }
                 .disabled(viewModel.calendarNotificationsDisabled)
@@ -604,7 +606,7 @@ private extension SettingsView {
     }
 
     /// Static title for the update row.
-    static let appUpdatesTitle = "App Version"
+    static let appUpdatesTitle = String(localized: "App Version")
 
     var appUpdatesRow: some View {
         HStack {
@@ -624,16 +626,16 @@ private extension SettingsView {
     var updateSubtitle: String {
         switch viewModel.updateStatus {
         case .idle, .checking:
-            "Checking\u{2026}"
+            String(localized: "Checking\u{2026}")
         case let .upToDate(version):
-            "You're up to date: \(version)"
+            String(localized: "You're up to date: \(version)")
         case let .updateAvailable(version, _):
-            "Update available: \(version)"
+            String(localized: "Update available: \(version)")
         case let .failed(version):
             if let version {
-                "Update check failed. Current version: \(version)"
+                String(localized: "Update check failed. Current version: \(version)")
             } else {
-                "Update check failed."
+                String(localized: "Update check failed.")
             }
         }
     }

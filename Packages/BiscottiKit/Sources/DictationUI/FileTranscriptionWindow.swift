@@ -28,7 +28,7 @@ public final class FileTranscriptionWindow {
             backing: .buffered,
             defer: false
         )
-        window.title = "Transcribe Audio File"
+        window.title = String(localized: "Transcribe Audio File")
         window.isReleasedWhenClosed = false
         let hosting = NSHostingController(rootView: FileTranscriptionView(session: session))
         hosting.sizingOptions = [.minSize]

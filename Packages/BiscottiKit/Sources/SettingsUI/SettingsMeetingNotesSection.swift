@@ -6,7 +6,7 @@ import SwiftUI
 /// Pavarotti: whether meetings get a Markdown note, where it goes, and which prompt
 /// writes it.
 struct MeetingNotesSettingsSection: View {
-    static let title = "Meeting Notes"
+    static let title = String(localized: "Meeting Notes")
 
     private let store = MeetingNotesSettingsStore()
     @State private var settings = MeetingNotesSettingsStore().load()
@@ -56,8 +56,8 @@ struct MeetingNotesSettingsSection: View {
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
         panel.directoryURL = settings.folder
-        panel.prompt = "Choose"
-        panel.message = "Choose the folder for meeting notes"
+        panel.prompt = String(localized: "Choose")
+        panel.message = String(localized: "Choose the folder for meeting notes")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         settings.folderPath = url.path(percentEncoded: false)
         store.save(settings)

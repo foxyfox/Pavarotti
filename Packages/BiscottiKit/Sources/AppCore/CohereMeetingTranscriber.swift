@@ -97,7 +97,7 @@ enum MeetingTranscriptionError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .speechModelNotInstalled:
-            "Meetings are transcribed with the dictation model. Install it in Settings \u{2192} Dictation first."
+            String(localized: "Meetings are transcribed with the dictation model. Install it in Settings \u{2192} Dictation first.")
         }
     }
 }

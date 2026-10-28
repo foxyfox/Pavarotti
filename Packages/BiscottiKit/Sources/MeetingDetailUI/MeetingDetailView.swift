@@ -343,8 +343,8 @@ private extension MeetingDetailView {
             HStack(alignment: .top) {
                 EditableMeetingTitle(
                     text: $viewModel.editableTitle,
-                    placeholder: "Untitled meeting",
-                    fieldPrompt: "Meeting title",
+                    placeholder: String(localized: "Untitled meeting"),
+                    fieldPrompt: String(localized: "Meeting title"),
                     font: .biscottiSerif(27)
                 ) {
                     await viewModel.saveTitle()
@@ -610,7 +610,7 @@ private extension MeetingDetailView {
         HStack {
             Picker("", selection: $viewModel.selectedTab) {
                 ForEach(MeetingDetailViewModel.Tab.allCases, id: \.self) { option in
-                    Text(option.rawValue).tag(option)
+                    Text(LocalizedStringKey(option.rawValue)).tag(option)
                 }
             }
             .pickerStyle(.segmented)
@@ -704,7 +704,7 @@ private extension MeetingDetailView {
                 set: { viewModel.updateNotes($0) }
             ),
             documentId: viewModel.meetingID.uuidString,
-            placeholder: "Add notes\u{2026}"
+            placeholder: String(localized: "Add notes\u{2026}")
         )
         .frame(minHeight: max(100, fill), alignment: .top)
         .background(TextViewFocusForwarder())
@@ -949,13 +949,13 @@ private extension MeetingDetailView {
                     .controlSize(.large)
 
                 VStack(alignment: .center, spacing: Tokens.spacingXS) {
-                    Text(message)
+                    Text(LocalizedStringKey(message))
                         .font(.system(size: 17, weight: .medium))
                         .foregroundStyle(Tokens.secondaryText)
                         .multilineTextAlignment(.center)
 
                     if let subtitle {
-                        Text(subtitle)
+                        Text(LocalizedStringKey(subtitle))
                             .font(.subheadline)
                             .foregroundStyle(Tokens.secondaryText.opacity(0.8))
                             .multilineTextAlignment(.center)

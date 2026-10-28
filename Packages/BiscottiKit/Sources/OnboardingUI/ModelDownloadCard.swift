@@ -85,11 +85,11 @@ struct ModelDownloadRow<ExtraContent: View>: View {
 
             // Name + why + optional extra
             VStack(alignment: .leading, spacing: 2) {
-                Text(name)
+                Text(LocalizedStringKey(name))
                     .font(.system(size: 14.5, weight: .semibold))
                     .foregroundStyle(.ink)
 
-                Text(why)
+                Text(LocalizedStringKey(why))
                     .font(.system(size: 12.5))
                     .foregroundStyle(.inkSecondary)
                     .multilineTextAlignment(.leading)
@@ -189,7 +189,7 @@ struct DownloadControl: View {
                     systemImage: "arrow.down.circle",
                     action: onDownload
                 )
-                Text(sizeCaption)
+                Text(LocalizedStringKey(sizeCaption))
                     .font(.biscottiMono(11))
                     .foregroundStyle(.inkTertiary)
                     .multilineTextAlignment(.center)
@@ -232,7 +232,7 @@ struct DownloadControl: View {
         case let .indeterminate(status):
             IndeterminateBar(trackWidth: controlWidth)
             if let status {
-                Text(status)
+                Text(LocalizedStringKey(status))
                     .font(.biscottiMono(11))
                     .foregroundStyle(.inkSecondary)
                     .multilineTextAlignment(.center)
@@ -304,7 +304,7 @@ struct RecommendationLine: View {
     var body: some View {
         HStack(spacing: 10) {
             if let modelName {
-                Text(isRecommended ? "Recommended \u{00B7} \(modelName)" : modelName)
+                Text(isRecommended ? String(localized: "Recommended \u{00B7} \(modelName)") : modelName)
                     .font(.system(size: 12.5))
                     .foregroundStyle(.inkSecondary)
             }

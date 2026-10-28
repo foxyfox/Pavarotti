@@ -52,11 +52,11 @@ struct MCPHelpSheet: View {
             }
             .buttonStyle(.borderless)
 
-            Text(
-                "Any app on this Mac can read your meetings while this is on. "
-                    + "Nothing leaves your machine unless the agent you connect "
-                    + "sends it somewhere."
-            )
+            Text("""
+            Any app on this Mac can read your meetings while this is on. \
+            Nothing leaves your machine unless the agent you connect \
+            sends it somewhere.
+            """)
             .font(Tokens.metadataFont)
             .foregroundStyle(Tokens.secondaryText)
 

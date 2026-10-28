@@ -17,10 +17,10 @@ public enum SettingsPane: String, CaseIterable, Identifiable, Sendable {
 
     public var title: String {
         switch self {
-        case .dictation: "Dictation"
-        case .meetings: "Meetings"
-        case .intelligence: "AI"
-        case .general: "General"
+        case .dictation: String(localized: "Dictation")
+        case .meetings: String(localized: "Meetings")
+        case .intelligence: String(localized: "AI")
+        case .general: String(localized: "General")
         }
     }
 
@@ -37,10 +37,10 @@ public enum SettingsPane: String, CaseIterable, Identifiable, Sendable {
     /// One line on what the page holds.
     public var caption: String {
         switch self {
-        case .dictation: "Push-to-talk, microphone, sounds, the recording bubble and your dictionary."
-        case .meetings: "Recording, notifications, meeting notes, vocabulary and calendars."
-        case .intelligence: "Summaries and speaker names, on this Mac or with a cloud model."
-        case .general: "Startup, updates, permissions, and import and export."
+        case .dictation: String(localized: "Push-to-talk, microphone, sounds, the recording bubble and your dictionary.")
+        case .meetings: String(localized: "Recording, notifications, meeting notes, vocabulary and calendars.")
+        case .intelligence: String(localized: "Summaries and speaker names, on this Mac or with a cloud model.")
+        case .general: String(localized: "Startup, updates, permissions, and import and export.")
         }
     }
 }

@@ -17,9 +17,9 @@ public struct BubbleAppearance: Codable, Equatable, Sendable {
 
         public var displayName: String {
             switch self {
-            case .minimal: "Minimal"
-            case .compact: "Compact"
-            case .large: "Large"
+            case .minimal: String(localized: "Minimal")
+            case .compact: String(localized: "Compact")
+            case .large: String(localized: "Large")
             }
         }
     }
@@ -40,8 +40,8 @@ public struct BubbleAppearance: Codable, Equatable, Sendable {
         public var displayName: String {
             switch self {
             case .glass: "Liquid Glass"
-            case .frosted: "Frosted"
-            case .dark: "Dark"
+            case .frosted: String(localized: "Frosted")
+            case .dark: String(localized: "Dark")
             }
         }
     }
@@ -57,8 +57,8 @@ public struct BubbleAppearance: Codable, Equatable, Sendable {
 
         public var displayName: String {
             switch self {
-            case .bottom: "Bottom"
-            case .top: "Top"
+            case .bottom: String(localized: "Bottom")
+            case .top: String(localized: "Top")
             }
         }
     }

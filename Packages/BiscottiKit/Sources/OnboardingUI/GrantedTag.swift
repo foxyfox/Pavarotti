@@ -23,7 +23,7 @@ struct GrantedTag: View {
                         .foregroundStyle(.white)
                 )
 
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .kicker()
                 .foregroundStyle(.sage)
         }

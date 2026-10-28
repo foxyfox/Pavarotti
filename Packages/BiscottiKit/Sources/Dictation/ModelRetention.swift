@@ -17,10 +17,10 @@ public enum ModelRetention: String, Codable, CaseIterable, Identifiable, Sendabl
 
     public var displayName: String {
         switch self {
-        case .always: "Always"
-        case .fiveMinutes: "5 minutes"
-        case .fifteenMinutes: "15 minutes"
-        case .oneHour: "1 hour"
+        case .always: String(localized: "Always")
+        case .fiveMinutes: String(localized: "5 minutes")
+        case .fifteenMinutes: String(localized: "15 minutes")
+        case .oneHour: String(localized: "1 hour")
         }
     }
 

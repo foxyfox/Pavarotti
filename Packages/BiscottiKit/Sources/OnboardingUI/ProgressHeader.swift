@@ -41,7 +41,7 @@ struct ProgressHeader: View {
                     .animation(.easeInOut(duration: 0.25), value: step)
             }
 
-            Text(kickerText)
+            Text(LocalizedStringKey(kickerText))
                 .kicker()
                 .foregroundStyle(.inkSecondary)
         }

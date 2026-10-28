@@ -50,7 +50,7 @@ public struct CohereModel: Sendable, Hashable, Identifiable {
     /// Macs. Its German is likely a little less accurate than Cohere's.
     public static let small = CohereModel(
         id: "parakeet-tdt-0.6b-v3-q4_k",
-        displayName: "Small (Parakeet 0.6B, for older Macs)",
+        displayName: String(localized: "Small (Parakeet 0.6B, for older Macs)"),
         asset: CohereAssetCatalog.modelAsset(
             file: "parakeet-tdt-0.6b-v3-q4_k.gguf",
             size: 417_894_912,
@@ -64,7 +64,7 @@ public struct CohereModel: Sendable, Hashable, Identifiable {
     /// The repository's newer Q4_K, about 220 MB smaller than the one TypeWhisper used.
     public static let compact = CohereModel(
         id: "cohere-transcribe-03-2026-q4_k",
-        displayName: "Compact (Cohere Q4_K)",
+        displayName: String(localized: "Compact (Cohere Q4_K)"),
         asset: CohereAssetCatalog.modelAsset(
             file: "cohere-transcribe-q4_k.gguf",
             size: 1_289_178_240,
@@ -76,7 +76,7 @@ public struct CohereModel: Sendable, Hashable, Identifiable {
 
     public static let fast = CohereModel(
         id: "cohere-transcribe-03-2026-q5_0",
-        displayName: "Fast (Cohere Q5_0, recommended)",
+        displayName: String(localized: "Fast (Cohere Q5_0, recommended)"),
         asset: CohereAssetCatalog.modelAsset(
             file: "cohere-transcribe-q5_0.gguf",
             size: 1_738_722_944,
@@ -87,7 +87,7 @@ public struct CohereModel: Sendable, Hashable, Identifiable {
 
     public static let precise = CohereModel(
         id: "cohere-transcribe-03-2026-q6_k",
-        displayName: "Higher precision (Cohere Q6_K)",
+        displayName: String(localized: "Higher precision (Cohere Q6_K)"),
         asset: CohereAssetCatalog.modelAsset(
             file: "cohere-transcribe-q6_k.gguf",
             size: 1_981_355_648,
@@ -98,7 +98,7 @@ public struct CohereModel: Sendable, Hashable, Identifiable {
 
     public static let maximum = CohereModel(
         id: "cohere-transcribe-03-2026-q8_0",
-        displayName: "Maximum precision (Cohere Q8_0, experimental)",
+        displayName: String(localized: "Maximum precision (Cohere Q8_0, experimental)"),
         asset: CohereAssetCatalog.modelAsset(
             file: "cohere-transcribe-q8_0.gguf",
             size: 2_423_803_520,

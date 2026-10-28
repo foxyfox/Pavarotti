@@ -174,7 +174,7 @@ struct FileTranscriptionView: View {
         pasteboard.clearContents()
         pasteboard.setString(transcript.markdown(), forType: .string)
         savedFile = nil
-        status = "Copied to the clipboard."
+        status = String(localized: "Copied to the clipboard.")
     }
 
     private func save(_ transcript: FileTranscript) {
@@ -187,10 +187,10 @@ struct FileTranscriptionView: View {
         do {
             try Data(transcript.markdown().utf8).write(to: url, options: .atomic)
             savedFile = url
-            status = "Saved as \u{201C}\(url.lastPathComponent)\u{201D}."
+            status = String(localized: "Saved as \u{201C}\(url.lastPathComponent)\u{201D}.")
         } catch {
             savedFile = nil
-            status = "Could not save: \(error.localizedDescription)"
+            status = String(localized: "Could not save: \(error.localizedDescription)")
         }
     }
 }

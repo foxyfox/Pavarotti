@@ -40,7 +40,7 @@ extension ModelCard {
             ModelDownloadRow(
                 icon: "mic",
                 name: "Dictation \u{00B7} Cohere Transcribe",
-                why: "Push-to-talk dictation in German and English.",
+                why: "Push-to-talk dictation in German, English and many other languages.",
                 state: state,
                 onDownload: { viewModel.startDictationDownload() },
                 extraContent: {
@@ -80,7 +80,7 @@ struct DictationModelMenu: View {
                 }
             }
         } label: {
-            Text(selected?.displayName ?? "Choose a model")
+            Text(selected?.displayName ?? String(localized: "Choose a model"))
                 .font(.system(size: 12.5))
         }
         .menuStyle(.borderlessButton)

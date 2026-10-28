@@ -15,9 +15,9 @@ public enum DictationShortcutMode: String, Codable, CaseIterable, Sendable, Iden
 
     public var displayName: String {
         switch self {
-        case .hold: "Hold to talk"
-        case .toggle: "Press to start, press again to stop"
-        case .hybrid: "Hold to talk, or tap to start and stop"
+        case .hold: String(localized: "Hold to talk")
+        case .toggle: String(localized: "Press to start, press again to stop")
+        case .hybrid: String(localized: "Hold to talk, or tap to start and stop")
         }
     }
 }

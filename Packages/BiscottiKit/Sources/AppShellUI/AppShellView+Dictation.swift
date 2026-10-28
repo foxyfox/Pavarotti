@@ -23,7 +23,7 @@ struct DictationSidebarRows: View {
 
 /// One sidebar row: an icon, tinted when selected, and a title on a highlighted background.
 struct SidebarRow: View {
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
     let isSelected: Bool
     let action: () -> Void

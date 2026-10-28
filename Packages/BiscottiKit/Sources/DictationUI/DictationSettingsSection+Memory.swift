@@ -13,15 +13,15 @@ extension DictationSettingsSection {
                         .tag(retention)
                 }
             }
-            statusText(retentionCaption)
+            statusText(verbatim: retentionCaption)
         }
     }
 
     private var retentionCaption: String {
         if controller.settings.modelRetention == .always {
-            "Every dictation is fast, but the model keeps its memory."
+            String(localized: "Every dictation is fast, but the model keeps its memory.")
         } else {
-            "Frees the model\u{2019}s memory after a pause. The first dictation afterwards takes a few seconds longer."
+            String(localized: "Frees the model\u{2019}s memory after a pause. The first dictation afterwards takes a few seconds longer.")
         }
     }
 

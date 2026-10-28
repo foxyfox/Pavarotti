@@ -18,9 +18,9 @@ extension DictationController {
         guard settings.isEnabled, settings.learnsFromCorrections else { return }
         switch dependencies.dictionary.learn(correction) {
         case let .added(entry), let .updated(entry):
-            showNotice("Added to the dictionary: \(entry.original) \u{2192} \(entry.replacement)")
+            showNotice(String(localized: "Added to the dictionary: \(entry.original) \u{2192} \(entry.replacement)"))
         case let .removed(entry):
-            showNotice("Removed from the dictionary: \(entry.original) \u{2192} \(entry.replacement)")
+            showNotice(String(localized: "Removed from the dictionary: \(entry.original) \u{2192} \(entry.replacement)"))
         case .unchanged:
             break
         }

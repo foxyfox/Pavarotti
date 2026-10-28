@@ -7,20 +7,19 @@ import SwiftUI
 extension SettingsView {
     /// Subtitle shown under the MCP toggle whenever the server is not
     /// starting/failed (functional spec §2.1).
-    static let mcpSubtitle = "Chat with your meeting notes in any agent."
+    static let mcpSubtitle = String(localized: "Chat with your meeting notes in any agent.")
 
     /// Toggle-on confirmation alert copy (functional spec §2.1).
     /// Verbatim-identity policy: these statics == the spec text.
-    static let mcpConfirmTitle = "Allow local apps to read your meetings?"
+    static let mcpConfirmTitle = String(localized: "Allow local apps to read your meetings?")
 
-    static let mcpConfirmMessage =
-        "While MCP is on, any app on this Mac can read your meeting notes, "
-            + "transcripts, and summaries. Nothing leaves your Mac unless an agent "
-            + "you connect sends it somewhere."
+    static let mcpConfirmMessage = String(
+        localized: "While MCP is on, any app on this Mac can read your meeting notes, transcripts, and summaries. Nothing leaves your Mac unless an agent you connect sends it somewhere."
+    )
 
-    static let mcpConfirmCancelTitle = "Cancel"
+    static let mcpConfirmCancelTitle = String(localized: "Cancel")
 
-    static let mcpConfirmTurnOnTitle = "Turn On"
+    static let mcpConfirmTurnOnTitle = String(localized: "Turn On")
 
     /// The MCP settings row, last in the General section: the toggle holds
     /// the user's intent (`mcpServerEnabled`), the caption below renders the

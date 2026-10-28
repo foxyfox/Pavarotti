@@ -48,7 +48,7 @@ struct AlertsHelpSheet: View {
         .frame(width: 400)
     }
 
-    private func stepRow(number: Int, text: String) -> some View {
+    private func stepRow(number: Int, text: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: Tokens.spacingSM) {
             Text("\(number).")
                 .monospacedDigit()

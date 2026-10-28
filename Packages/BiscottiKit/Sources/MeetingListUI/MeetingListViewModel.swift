@@ -122,7 +122,7 @@ public final class MeetingListViewModel {
     /// The label for a context-menu delete action covering `count` items.
     /// "Delete" for a single item, "Delete N" for multiple.
     public nonisolated static func deleteMenuLabel(for count: Int) -> String {
-        count <= 1 ? "Delete" : "Delete \(count)"
+        count <= 1 ? String(localized: "Delete") : String(localized: "Delete \(count)")
     }
 
     /// Confirms the pending delete. Deletes exactly the IDs that were

@@ -11,11 +11,11 @@ extension SettingsView {
         string: "https://github.com/scosman/Biscotti/blob/main/App/ImportingExporting.md"
     )!
 
-    static let importRowTitle = "Import Meetings"
-    static let importRowSubtitle = "Import meetings from other apps, via CSV."
-    static let exportRowTitle = "Export Meetings"
-    static let exportRowSubtitle = "Export all meetings to CSV."
-    static let learnMoreTitle = "Learn more"
+    static let importRowTitle = String(localized: "Import Meetings")
+    static let importRowSubtitle = String(localized: "Import meetings from other apps, via CSV.")
+    static let exportRowTitle = String(localized: "Export Meetings")
+    static let exportRowSubtitle = String(localized: "Export all meetings to CSV.")
+    static let learnMoreTitle = String(localized: "Learn more")
 
     var importExportSection: some View {
         Section(Self.sectionTitles[5]) {

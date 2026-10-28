@@ -261,7 +261,7 @@ public struct RecordingView: View {
         VStack(alignment: .leading, spacing: Tokens.spacingSM) {
             EditableMeetingTitle(
                 text: $viewModel.editableTitle,
-                placeholder: "Untitled recording",
+                placeholder: String(localized: "Untitled recording"),
                 font: .biscottiSerif(26)
             ) {
                 await viewModel.saveTitle()

@@ -279,17 +279,17 @@ public final class NotificationService {
     private func registerCategories() {
         let recordAndJoin = UNNotificationAction(
             identifier: ActionID.recordAndJoin,
-            title: "Record & Join",
+            title: String(localized: "Record & Join"),
             options: []
         )
         let record = UNNotificationAction(
             identifier: ActionID.record,
-            title: "Record",
+            title: String(localized: "Record"),
             options: []
         )
         let keepRecording = UNNotificationAction(
             identifier: ActionID.keepRecording,
-            title: "Keep Recording",
+            title: String(localized: "Keep Recording"),
             options: [.foreground]
         )
 
@@ -353,8 +353,8 @@ private func makeRequest(for kind: NotificationKind) -> UNNotificationRequest {
         )
 
     case let .adHocDetected(bundleID, appName):
-        content.title = "Meeting detected"
-        content.subtitle = "App: \(appName)"
+        content.title = String(localized: "Meeting detected")
+        content.subtitle = String(localized: "App: \(appName)")
         content.body = ""
         content.interruptionLevel = .timeSensitive
         content.categoryIdentifier = CategoryID.adHocDetected
@@ -404,8 +404,8 @@ private func fillCountdownContent(
     meetingID: UUID,
     secondsRemaining: Int
 ) {
-    content.title = "Recording will stop in \(secondsRemaining)s"
-    content.body = "Tap to keep recording"
+    content.title = String(localized: "Recording will stop in \(secondsRemaining)s")
+    content.body = String(localized: "Tap to keep recording")
     content.categoryIdentifier = CategoryID.stopCountdown
     content.userInfo = [
         UserInfoKey.kind: KindValue.countdown,

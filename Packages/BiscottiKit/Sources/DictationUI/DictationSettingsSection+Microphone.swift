@@ -28,7 +28,7 @@ extension DictationSettingsSection {
     }
 
     private var defaultMicrophoneLabel: String {
-        controller.defaultMicrophone.map { "System default (\($0.name))" } ?? "System default"
+        controller.defaultMicrophone.map { String(localized: "System default (\($0.name))") } ?? String(localized: "System default")
     }
 
     @ViewBuilder

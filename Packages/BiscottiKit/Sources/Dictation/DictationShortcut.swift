@@ -50,15 +50,15 @@ public enum ModifierKey: String, Codable, CaseIterable, Sendable, Identifiable {
 
     public var displayName: String {
         switch self {
-        case .function: "Fn / Globe"
-        case .rightCommand: "Right \u{2318} Command"
-        case .rightOption: "Right \u{2325} Option"
-        case .rightControl: "Right \u{2303} Control"
-        case .rightShift: "Right \u{21E7} Shift"
-        case .leftCommand: "Left \u{2318} Command"
-        case .leftOption: "Left \u{2325} Option"
-        case .leftControl: "Left \u{2303} Control"
-        case .leftShift: "Left \u{21E7} Shift"
+        case .function: String(localized: "Fn / Globe")
+        case .rightCommand: String(localized: "Right \u{2318} Command")
+        case .rightOption: String(localized: "Right \u{2325} Option")
+        case .rightControl: String(localized: "Right \u{2303} Control")
+        case .rightShift: String(localized: "Right \u{21E7} Shift")
+        case .leftCommand: String(localized: "Left \u{2318} Command")
+        case .leftOption: String(localized: "Left \u{2325} Option")
+        case .leftControl: String(localized: "Left \u{2303} Control")
+        case .leftShift: String(localized: "Left \u{21E7} Shift")
         }
     }
 

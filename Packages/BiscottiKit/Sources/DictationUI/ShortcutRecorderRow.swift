@@ -21,7 +21,7 @@ struct ShortcutRecorderRow: View {
                 }
             }
             Spacer()
-            Button(isRecording ? "Press the new shortcut\u{2026}" : controller.settings.shortcut.displayName) {
+            Button(isRecording ? String(localized: "Press the new shortcut\u{2026}") : controller.settings.shortcut.displayName) {
                 if isRecording {
                     finishRecording()
                 } else {
@@ -35,10 +35,10 @@ struct ShortcutRecorderRow: View {
 
     private var hint: String? {
         if isRecording {
-            return "Press a modifier key on its own, or a key with \u{2318} \u{2325} \u{2303} or \u{21E7}. Esc cancels."
+            return String(localized: "Press a modifier key on its own, or a key with \u{2318} \u{2325} \u{2303} or \u{21E7}. Esc cancels.")
         }
         if controller.settings.shortcut == .modifier(.function) {
-            return "Set \u{201C}Press \u{1F310} key to\u{201D} to \u{201C}Do Nothing\u{201D} in System Settings \u{2192} Keyboard."
+            return String(localized: "Set \u{201C}Press \u{1F310} key to\u{201D} to \u{201C}Do Nothing\u{201D} in System Settings \u{2192} Keyboard.")
         }
         return nil
     }
