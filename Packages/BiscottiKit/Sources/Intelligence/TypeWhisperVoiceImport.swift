@@ -23,7 +23,7 @@ public enum TypeWhisperVoiceImport {
         public let similarity: Double
     }
 
-    /// What one import took over, for the Settings caption.
+    /// What one import took over, for the log.
     public struct Outcome: Equatable, Sendable {
         public var foundFile = true
         public var people: [String] = []
@@ -40,7 +40,7 @@ public enum TypeWhisperVoiceImport {
                 parts.append("Your own voice counts once the calendar shows which attendee you are.")
             }
             if comparisons.isEmpty {
-                parts.append("Name a speaker in a meeting and import again to see whether the voices fit Pavarotti\u{2019}s.")
+                parts.append("No speaker is named in Pavarotti yet to compare the voices with.")
             } else {
                 let values = comparisons.map { "\($0.name) \(String(format: "%.2f", $0.similarity))" }
                 parts.append(

@@ -92,6 +92,11 @@ public final class DictationSettingsStore {
         Self.load(from: defaults)
     }
 
+    /// Whether settings were ever saved, that is, whether this is not a fresh install.
+    public var hasSavedSettings: Bool {
+        defaults.data(forKey: Self.key) != nil
+    }
+
     public func save(_ settings: DictationSettings) {
         guard let data = try? JSONEncoder().encode(settings) else { return }
         defaults.set(data, forKey: Self.key)

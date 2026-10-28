@@ -15,7 +15,7 @@ public extension AppCore {
         intelligence.onRunFinished = { [weak self] meetingID in
             self?.writeMeetingNote(meetingID: meetingID)
         }
-        await importTypeWhisperNotesSetup(force: false)
+        await importTypeWhisperNotesSetup()
     }
 
     // TODO: Also rewrite the note when speakers are renamed or the summary is edited
@@ -33,35 +33,26 @@ public extension AppCore {
         }
     }
 
-    /// Takes over TypeWhisper's notes folder and "Besprechungsnotizen" prompt. At launch
-    /// this runs once and keeps a summary prompt the user already changed; `force`
-    /// (the button in Settings) takes both over again.
-    /// - Returns: What was taken over, for the Settings caption.
-    @discardableResult
-    func importTypeWhisperNotesSetup(force: Bool) async -> String {
+    /// Takes over TypeWhisper's notes folder and "Besprechungsnotizen" prompt, once. A
+    /// summary prompt the user already changed stays.
+    func importTypeWhisperNotesSetup() async {
         let settingsStore = MeetingNotesSettingsStore()
         var settings = settingsStore.load()
-        guard force || !settings.checkedTypeWhisper else { return "" }
+        guard !settings.checkedTypeWhisper else { return }
         settings.checkedTypeWhisper = true
         defer { settingsStore.save(settings) }
 
-        guard let setup = TypeWhisperNotesImport.setup() else {
-            return "TypeWhisper has no meeting notes set up."
-        }
-        var taken: [String] = []
+        guard let setup = TypeWhisperNotesImport.setup() else { return }
         if let folder = setup.folderPath {
             settings.folderPath = folder
-            taken.append("folder")
         }
         if let workflow = setup.workflow, let prompt = workflow.summaryPrompt {
             let current = await (try? store.settings())?.summaryPrompt ?? ""
-            if force || current.isEmpty {
+            if current.isEmpty {
                 try? await saveSummaryPrompt(prompt)
                 settings.templateName = workflow.name
-                taken.append("prompt \u{201C}\(workflow.name)\u{201D}")
             }
         }
-        return taken.isEmpty ? "Nothing to take over from TypeWhisper." : "Took over the \(taken.joined(separator: " and "))."
     }
 
     private nonisolated static func writeNote(meetingID: UUID, failure: String?, store: DataStore) async {
