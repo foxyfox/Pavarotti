@@ -614,6 +614,8 @@ private extension MeetingDetailView {
                 }
             }
             .pickerStyle(.segmented)
+            // Pavarotti: the empty label still took room and pushed the tabs right.
+            .labelsHidden()
             .fixedSize()
 
             Spacer()

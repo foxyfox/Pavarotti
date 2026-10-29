@@ -96,9 +96,9 @@ struct MarkdownEditorConfigurationTests {
 
     // MARK: - Text insets
 
-    @Test("text insets provide inner padding")
+    @Test("text insets: no side inset (Pavarotti), vertical padding")
     func textInsetsSet() {
-        #expect(config.textInsets.horizontal == 8)
+        #expect(config.textInsets.horizontal == 0)
         #expect(config.textInsets.vertical == 8)
     }
 

@@ -77,13 +77,15 @@ public struct UpcomingEventRow: View {
     @ViewBuilder
     private var badgeLabel: some View {
         if let platformBadge {
+            // Pavarotti: shaped like the compact tag pills, so the chips match.
             Text(platformBadge)
-                .font(.caption2)
+                .font(.system(size: 10.5, weight: .medium))
                 .foregroundStyle(.inkSecondary)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
+                .lineLimit(1)
+                .padding(.horizontal, 7)
+                .frame(height: 17)
                 .background(
-                    RoundedRectangle(cornerRadius: 3)
+                    RoundedRectangle(cornerRadius: 5)
                         .fill(Color.neutralChip)
                 )
         }
