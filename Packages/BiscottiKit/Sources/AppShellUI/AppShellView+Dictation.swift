@@ -22,22 +22,39 @@ struct DictationSidebarRows: View {
 }
 
 /// One sidebar row: an icon, tinted when selected, and a title on a highlighted background.
+/// Icons sit in a column of one width, so every title starts at the same place.
 struct SidebarRow: View {
+    /// The icon column's width.
+    static let iconWidth: CGFloat = 18
+    /// The gap between the icon column and the title.
+    static let iconTitleSpacing = Tokens.spacingSM
+    /// The room between the highlight's edge and the icon.
+    static let inset: CGFloat = 6
+
     let title: LocalizedStringKey
     let systemImage: String
     let isSelected: Bool
+    var showsUpdateDot = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Tokens.spacingSM) {
+            HStack(spacing: Self.iconTitleSpacing) {
                 Image(systemName: systemImage)
                     .foregroundStyle(isSelected ? Color.sage : Tokens.secondaryText)
+                    .frame(width: Self.iconWidth)
                 Text(title)
                     .font(.body)
                 Spacer()
+                if showsUpdateDot {
+                    Circle()
+                        .fill(Color.sage)
+                        .frame(width: 8, height: 8)
+                        .accessibilityLabel("Update available")
+                }
             }
             .padding(.vertical, Tokens.spacingXS)
+            .padding(.horizontal, Self.inset)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

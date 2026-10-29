@@ -52,7 +52,8 @@ public extension MarkdownEditorConfiguration {
             theme: .biscotti,
             lists: ListStyle(helpersEnabled: true, autoClosePairsEnabled: false),
             overscroll: OverscrollPolicy(percent: 0, maxPoints: 8, minPoints: 4),
-            textInsets: TextInsets(horizontal: 8, vertical: 8),
+            // Pavarotti: no side inset, so the text lines up with the meeting title.
+            textInsets: TextInsets(horizontal: 0, vertical: 8),
             readingWidth: nil,
             heightBehavior: .fitsContent
         )

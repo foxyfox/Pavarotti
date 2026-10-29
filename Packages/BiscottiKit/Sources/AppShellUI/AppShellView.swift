@@ -159,67 +159,29 @@ public struct AppShellView: View {
     }
 
     private var sidebarBrandLockup: some View {
-        HStack(spacing: 6) {
+        // Pavarotti: the mark sits in the rows' icon column, the name on their titles.
+        HStack(spacing: SidebarRow.iconTitleSpacing) {
             BrandMark()
+                .frame(width: SidebarRow.iconWidth)
             Text(AppName.display)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.ink)
         }
         .padding(.vertical, Tokens.spacingXS)
+        .padding(.horizontal, SidebarRow.inset)
     }
 
+    // Pavarotti: every row is a `SidebarRow`, so icons and titles line up.
     private var homeRow: some View {
-        Button {
+        SidebarRow(title: "Home", systemImage: "house", isSelected: viewModel.route == .home) {
             viewModel.showHome()
-        } label: {
-            HStack(spacing: Tokens.spacingSM) {
-                Image(systemName: "house")
-                    .foregroundStyle(
-                        viewModel.route == .home
-                            ? Color.sage
-                            : Tokens.secondaryText
-                    )
-                Text("Home")
-                    .font(.body)
-                Spacer()
-            }
-            .padding(.vertical, Tokens.spacingXS)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .background(
-            viewModel.route == .home
-                ? Tokens.accentWashStrong
-                : Color.clear,
-            in: RoundedRectangle(cornerRadius: 4)
-        )
     }
 
     private var pastMeetingsRow: some View {
-        Button {
+        SidebarRow(title: "Past Meetings", systemImage: "clock", isSelected: viewModel.route == .meetings) {
             viewModel.showMeetings()
-        } label: {
-            HStack(spacing: Tokens.spacingSM) {
-                Image(systemName: "clock")
-                    .foregroundStyle(
-                        viewModel.route == .meetings
-                            ? Color.sage
-                            : Tokens.secondaryText
-                    )
-                Text("Past Meetings")
-                    .font(.body)
-                Spacer()
-            }
-            .padding(.vertical, Tokens.spacingXS)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .background(
-            viewModel.route == .meetings
-                ? Tokens.accentWashStrong
-                : Color.clear,
-            in: RoundedRectangle(cornerRadius: 4)
-        )
     }
 
     private var upcomingSection: some View {
@@ -227,36 +189,13 @@ public struct AppShellView: View {
     }
 
     private var settingsRow: some View {
-        Button {
+        SidebarRow(
+            title: "Settings", systemImage: "gearshape",
+            isSelected: viewModel.route == .settings,
+            showsUpdateDot: viewModel.isUpdateAvailable
+        ) {
             viewModel.showSettings()
-        } label: {
-            HStack(spacing: Tokens.spacingSM) {
-                Image(systemName: "gearshape")
-                    .foregroundStyle(
-                        viewModel.route == .settings
-                            ? Color.sage
-                            : Tokens.secondaryText
-                    )
-                Text("Settings")
-                    .font(.body)
-                Spacer()
-                if viewModel.isUpdateAvailable {
-                    Circle()
-                        .fill(Color.sage)
-                        .frame(width: 8, height: 8)
-                        .accessibilityLabel("Update available")
-                }
-            }
-            .padding(.vertical, Tokens.spacingXS)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .background(
-            viewModel.route == .settings
-                ? Tokens.accentWashStrong
-                : Color.clear,
-            in: RoundedRectangle(cornerRadius: 4)
-        )
     }
 
     // MARK: - Detail pane
@@ -352,10 +291,11 @@ private struct UpcomingSidebarSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Pavarotti: the kicker and the rows start where the sidebar titles do.
             Text("UPCOMING")
                 .kicker()
                 .foregroundStyle(.inkSecondary)
-                .padding(.horizontal, Tokens.spacingMD)
+                .padding(.horizontal, Tokens.spacingSM + SidebarRow.inset)
                 .padding(.bottom, Tokens.spacingXS)
 
             ForEach(viewModel.upcomingEvents) { event in
@@ -369,7 +309,7 @@ private struct UpcomingSidebarSection: View {
                         twoLine: true
                     )
                     .padding(.vertical, Tokens.spacingXS)
-                    .padding(.horizontal, Tokens.spacingSM)
+                    .padding(.horizontal, SidebarRow.inset)
                 }
                 .buttonStyle(.plain)
                 .background(
@@ -378,6 +318,7 @@ private struct UpcomingSidebarSection: View {
                         : Color.clear,
                     in: RoundedRectangle(cornerRadius: 4)
                 )
+                .padding(.horizontal, Tokens.spacingSM)
             }
 
             Divider()
@@ -528,7 +469,7 @@ private struct RecordingNowSection: View {
             Text("RECORDING NOW")
                 .kicker()
                 .foregroundStyle(Color.inkSecondary)
-                .padding(.horizontal, Tokens.spacingMD)
+                .padding(.horizontal, Tokens.spacingSM + SidebarRow.inset)
                 .padding(.bottom, Tokens.spacingXS)
 
             Button {
@@ -546,7 +487,7 @@ private struct RecordingNowSection: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, Tokens.spacingXS)
-                .padding(.horizontal, Tokens.spacingSM)
+                .padding(.horizontal, SidebarRow.inset)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -556,6 +497,7 @@ private struct RecordingNowSection: View {
                     : Color.clear,
                 in: RoundedRectangle(cornerRadius: 4)
             )
+            .padding(.horizontal, Tokens.spacingSM)
 
             Divider()
                 .padding(.vertical, Tokens.spacingSM)
