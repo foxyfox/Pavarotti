@@ -260,7 +260,8 @@ public enum IntelligencePrompts {
     /// must be German.
     public static let languageRule = """
     Write your answer in the language spoken most in the transcript, even though these \
-    instructions are in English.
+    instructions are in English. Translate the section headings too: in a German \
+    meeting they are "Zusammenfassung" and "Aufgaben".
     """
 
     /// `turn` with ``languageRule`` as its last paragraph.

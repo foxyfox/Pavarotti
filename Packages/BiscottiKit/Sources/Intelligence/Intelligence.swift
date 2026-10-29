@@ -226,7 +226,8 @@ public final class Intelligence {
         summaryInstructions: String = IntelligencePrompts.defaultSummaryPrompt,
         markSummaryEdited: Bool = false
     ) async throws {
-        let human = await (try? store.humanSetSpeakerMappings(for: transcript.id)) ?? [:]
+        // Pavarotti: with the speaker on the microphone track named as the user.
+        let human = await RecorderSpeaker.speakerMappings(meetingID: meetingID, detail: detail, transcript: transcript, store: store)
         let unmappedSpeakers = Set(transcript.segments.compactMap(\.speakerID)).subtracting(human.keys)
         let doSpeakers = !unmappedSpeakers.isEmpty
         let doTitle = detail.title == Meeting.defaultTitle && !detail.editedTitle
