@@ -198,6 +198,18 @@ public final class MeetingDetailViewModel {
     /// sheet opens. `nil` when the sheet is closed.
     public private(set) var speakerSheetData: SpeakerSheetData?
 
+    /// Pavarotti: everyone known, offered when naming a speaker from the header.
+    public private(set) var knownPeople: [PersonData] = []
+
+    /// Pavarotti: writes the summary again a moment after the last speaker change.
+    var resummaryTask: Task<Void, Never>?
+
+    /// Pavarotti: how long the summary waits for more speaker changes.
+    var resummaryDelay: Duration = .seconds(2)
+
+    /// Pavarotti: a speaker changed while the speaker sheet was open.
+    var resummaryAfterSheet = false
+
     // MARK: - Summary tab
 
     /// The current saved summary markdown (from MeetingDetailData).
@@ -1136,6 +1148,7 @@ private extension MeetingDetailViewModel {
         editedSummary = detail?.editedSummary ?? false
         versions = detail?.versions ?? []
         catalogueTags = try await core.store.allTags()
+        knownPeople = await (try? core.store.allPersonData()) ?? []
         let settings = try? await core.store.settings()
         aiAnalysisEnabled = settings?.aiAnalysisEnabled ?? true
     }
@@ -1752,7 +1765,7 @@ public extension MeetingDetailViewModel {
     /// Assigns a speaker to an existing person. Apply-on-change:
     /// persists immediately and reloads the transcript cache.
     func assignSpeaker(speakerID: Int, personID: UUID) async {
-        guard let transcriptID = speakerSheetTranscriptID else {
+        guard let transcriptID = speakerTranscriptID else {
             return
         }
         do {
@@ -1768,7 +1781,7 @@ public extension MeetingDetailViewModel {
 
     /// Creates a new name-only person and assigns the speaker to them.
     func assignNewPerson(speakerID: Int, name: String) async {
-        guard let transcriptID = speakerSheetTranscriptID else {
+        guard let transcriptID = speakerTranscriptID else {
             return
         }
         let trimmed = name
@@ -1790,7 +1803,7 @@ public extension MeetingDetailViewModel {
 
     /// Clears a speaker assignment back to "Speaker N".
     func unassignSpeaker(speakerID: Int) async {
-        guard let transcriptID = speakerSheetTranscriptID else {
+        guard let transcriptID = speakerTranscriptID else {
             return
         }
         do {
@@ -1834,6 +1847,7 @@ public extension MeetingDetailViewModel {
         } catch {
             // Non-fatal
         }
+        await speakersChanged()
     }
 }
 
@@ -1843,5 +1857,127 @@ extension MeetingDetailViewModel {
     /// The consent notes for remembering voices; `nil` in tests and previews.
     var voiceConsent: VoiceConsentStore? {
         core.intelligence.voiceConsent
+    }
+}
+
+// MARK: - Pavarotti: speakers in the header
+
+/// One speaker of the displayed transcript, as the meeting header shows it.
+public struct HeaderSpeaker: Identifiable, Equatable, Sendable {
+    public let speakerID: Int
+    /// The transcript's own label, such as "Speaker 1".
+    public let label: String
+    public let person: PersonData?
+    /// How long the speaker talks, in seconds.
+    public let seconds: TimeInterval
+
+    public var id: Int {
+        speakerID
+    }
+
+    /// The person's name, else the transcript's label.
+    public var name: String {
+        person?.name ?? label
+    }
+}
+
+/// The people the header offers for a speaker, each once.
+public struct SpeakerChoices: Equatable, Sendable {
+    /// People already named in this transcript.
+    public var inMeeting: [PersonData] = []
+    /// The calendar event's organizer and attendees.
+    public var invited: [PersonData] = []
+    /// Everyone else known.
+    public var others: [PersonData] = []
+}
+
+extension MeetingDetailViewModel {
+    /// The transcript whose speakers are named: the sheet's, else the displayed one.
+    var speakerTranscriptID: UUID? {
+        speakerSheetTranscriptID ?? displayedTranscript?.id
+    }
+
+    /// The speakers of the displayed transcript, who talks most first.
+    var headerSpeakers: [HeaderSpeaker] {
+        guard let transcript = displayedTranscript else { return [] }
+        var seconds: [Int: TimeInterval] = [:]
+        var labels: [Int: String] = [:]
+        for segment in transcript.segments {
+            guard let speakerID = segment.speakerID else { continue }
+            seconds[speakerID, default: 0] += max(0, segment.endTime - segment.startTime)
+            if labels[speakerID] == nil {
+                labels[speakerID] = segment.speakerLabel
+            }
+        }
+        return seconds.map { speakerID, total in
+            HeaderSpeaker(
+                speakerID: speakerID,
+                label: labels[speakerID] ?? "",
+                person: transcript.speakerAssignments[speakerID],
+                seconds: total
+            )
+        }
+        .sorted { lhs, rhs in
+            lhs.seconds == rhs.seconds ? lhs.speakerID < rhs.speakerID : lhs.seconds > rhs.seconds
+        }
+    }
+
+    /// Who the header offers for a speaker.
+    var speakerChoices: SpeakerChoices {
+        var choices = SpeakerChoices()
+        var seen: Set<UUID> = []
+        for person in headerSpeakers.compactMap(\.person) where seen.insert(person.id).inserted {
+            choices.inMeeting.append(person)
+        }
+        if let calendar = calendarContext {
+            var invited = calendar.attendees
+            if let organizer = calendar.organizer {
+                invited.insert(organizer, at: 0)
+            }
+            for person in invited where seen.insert(person.id).inserted {
+                choices.invited.append(person)
+            }
+        }
+        choices.others = knownPeople.filter { seen.insert($0.id).inserted }
+        return choices
+    }
+
+    /// Called after a speaker was named or unnamed.
+    func speakersChanged() async {
+        knownPeople = await (try? core.store.allPersonData()) ?? knownPeople
+        scheduleResummary()
+    }
+
+    /// Writes the summary again a moment after the last speaker change, or once the
+    /// speaker sheet closes. Not when summaries are off, there is no summary yet, or
+    /// the user wrote the summary themselves.
+    func scheduleResummary() {
+        guard aiAnalysisEnabled, modelAvailable, !editedSummary, !summaryText.isEmpty,
+              let transcriptID = activeVersionID
+        else { return }
+        resummaryTask?.cancel()
+        guard speakerSheetTranscriptID == nil else {
+            resummaryAfterSheet = true
+            return
+        }
+        resummaryAfterSheet = false
+        // The new summary must not pull the user away from the transcript.
+        hasAutoJumpedForPipeline = true
+        let intelligence = core.intelligence
+        let meetingID = meetingID
+        let delay = resummaryDelay
+        resummaryTask = Task {
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            await intelligence.resummarize(meetingID: meetingID, transcriptID: transcriptID)
+        }
+    }
+
+    /// Closes the speaker sheet, then writes the summary again if a speaker changed.
+    func closeSpeakerSheet() {
+        speakerSheetTranscriptID = nil
+        if resummaryAfterSheet {
+            scheduleResummary()
+        }
     }
 }
