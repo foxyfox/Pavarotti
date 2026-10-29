@@ -189,7 +189,11 @@ public struct MeetingDetailView: View {
                         .map { SpeakerSheetBinding(id: $0) }
                 },
                 set: { newValue in
-                    viewModel.speakerSheetTranscriptID = newValue?.id
+                    if let newValue {
+                        viewModel.speakerSheetTranscriptID = newValue.id
+                    } else {
+                        viewModel.closeSpeakerSheet()
+                    }
                 }
             )
         ) { _ in
@@ -213,7 +217,7 @@ public struct MeetingDetailView: View {
                         )
                     },
                     onDismiss: {
-                        viewModel.speakerSheetTranscriptID = nil
+                        viewModel.closeSpeakerSheet()
                     },
                     voiceConsent: viewModel.voiceConsent
                 )
@@ -443,8 +447,11 @@ private extension MeetingDetailView {
     /// The tags row: detail-size pills with hover-remove, followed by
     /// the Add affordance that anchors the tag picker popover. Always
     /// present (even at zero tags, shows the empty-state Add button).
+    /// Pavarotti: the speakers come first, each named from its own menu.
     var tagsRow: some View {
         FlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
+            speakerChips
+
             ForEach(viewModel.appliedTags) { tag in
                 TagPill(tag: tag, size: .detail) {
                     Task { await viewModel.removeTag(tag) }
@@ -478,6 +485,42 @@ private extension MeetingDetailView {
                     }
                 )
             }
+        }
+    }
+
+    /// Pavarotti: the transcript's speakers, then a hairline before the tags.
+    @ViewBuilder
+    var speakerChips: some View {
+        let speakers = viewModel.headerSpeakers
+        let choices = viewModel.speakerChoices
+        ForEach(speakers) { speaker in
+            SpeakerChip(
+                speaker: speaker,
+                choices: choices,
+                onAssign: { personID in
+                    Task {
+                        await viewModel.assignSpeaker(
+                            speakerID: speaker.speakerID, personID: personID
+                        )
+                    }
+                },
+                onUnassign: {
+                    Task {
+                        await viewModel.unassignSpeaker(speakerID: speaker.speakerID)
+                    }
+                },
+                onMore: {
+                    Task {
+                        await viewModel.openSpeakerSheet(speakerID: speaker.speakerID)
+                    }
+                }
+            )
+        }
+        if !speakers.isEmpty {
+            Rectangle()
+                .fill(Color.hairline)
+                .frame(width: 1, height: 14)
+                .padding(.horizontal, 2)
         }
     }
 

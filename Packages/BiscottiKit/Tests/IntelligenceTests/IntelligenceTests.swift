@@ -2414,3 +2414,84 @@ struct IntelligenceVoiceprintIntegrationTests {
     }
 
 #endif
+
+// MARK: - Pavarotti: summary after a speaker change
+
+@Suite("Intelligence resummarize")
+struct IntelligenceResummarizeTests {
+    @Test("writes only the summary, with every speaker's name as it is now")
+    @MainActor func summaryOnlyWithCurrentNames() async throws {
+        let store = try makeStore()
+        let (meetingID, transcriptID) = try await makeMeetingWithTranscript(store: store)
+        try await store.applyGeneratedSummary("Old summary", for: meetingID)
+        let alice = try await store.findOrCreatePerson(name: "Alice", email: nil)
+        let bob = try await store.findOrCreatePerson(name: "Bob", email: nil)
+        // Alice was guessed, Bob was named by the user.
+        try await store.setSpeakerAssignments([0: alice], for: transcriptID)
+        try await store.setSpeakerAssignment(speakerID: 1, personID: bob, for: transcriptID)
+
+        let session = FakeSession()
+        session.streamingTokens = [["New summary"]]
+        let fixture = makeIntelligence(store: store, session: session)
+        await fixture.intel.resummarize(meetingID: meetingID, transcriptID: transcriptID)
+
+        #expect(session.generateCalls.isEmpty) // no speaker or title turn
+        #expect(session.streamingCalls.count == 1)
+        let transcriptTurn = session.streamingCalls.first?.last?.content ?? ""
+        #expect(transcriptTurn.contains("Alice:"))
+        #expect(transcriptTurn.contains("Bob:"))
+        #expect(fixture.intel.jobs[meetingID] == .completed)
+        let detail = try await store.meetingDetail(id: meetingID)
+        #expect(detail?.summary == "New summary")
+        #expect(detail?.editedSummary == false)
+    }
+
+    @Test("leaves a summary the user wrote alone")
+    @MainActor func keepsEditedSummary() async throws {
+        let store = try makeStore()
+        let (meetingID, transcriptID) = try await makeMeetingWithTranscript(store: store)
+        try await store.setSummary("My own notes", for: meetingID)
+
+        let fixture = makeIntelligence(store: store)
+        await fixture.intel.resummarize(meetingID: meetingID, transcriptID: transcriptID)
+
+        #expect(fixture.runner.sessionCount == 0)
+        let detail = try await store.meetingDetail(id: meetingID)
+        #expect(detail?.summary == "My own notes")
+    }
+
+    @Test("waits for the run in flight instead of being dropped")
+    @MainActor func waitsForRunInFlight() async throws {
+        let store = try makeStore()
+        let (meetingID, transcriptID) = try await makeMeetingWithTranscript(store: store)
+        try await store.applyGeneratedSummary("Old summary", for: meetingID)
+
+        let blocker = BlockingLLMRunner()
+        let models = try FakeModelProvider(downloadedIDs: [#require(LLMModelCatalog.all.first?.id)])
+        let modelManager = ModelManager(store: store, models: models, hardware: FakeHardwareProbe())
+        for model in models.catalog {
+            modelManager.downloads[model.id] = models.isDownloaded(model.id) ? .downloaded : .notDownloaded
+        }
+        let intel = Intelligence(
+            store: store, llm: blocker, modelManager: modelManager,
+            settings: { AISettings(enabled: true) }
+        )
+
+        let first = Task { @MainActor in
+            await intel.runAutoEnhancements(meetingID: meetingID)
+        }
+        await blocker.waitUntilEntered()
+        let second = Task { @MainActor in
+            await intel.resummarize(meetingID: meetingID, transcriptID: transcriptID)
+        }
+        await Task.yield()
+        blocker.release()
+        await first.value
+
+        // The waiting summary opens its own session once the first run is done.
+        await blocker.waitUntilEntered()
+        blocker.release()
+        await second.value
+        #expect(intel.jobs[meetingID] == .completed)
+    }
+}

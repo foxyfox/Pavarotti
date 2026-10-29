@@ -33,6 +33,9 @@ public final class Intelligence {
     /// Only one AI run at a time (mirrors TranscriptionService.inFlightMeetingID).
     private var inFlightMeetingID: UUID?
 
+    /// Pavarotti: who waits for the run in flight to end.
+    @ObservationIgnored private var waiting = RunWaiters()
+
     /// Pavarotti: called after every auto or manual run that was not skipped for another
     /// one in flight, whatever its outcome, so the meeting's note can be written.
     @ObservationIgnored public var onRunFinished: (@MainActor (UUID) -> Void)?
@@ -69,6 +72,7 @@ public final class Intelligence {
     private func finishRun(_ meetingID: UUID) {
         inFlightMeetingID = nil
         onRunFinished?(meetingID)
+        wakeIdleWaiters()
     }
 
     // MARK: - Auto-run orchestration
@@ -352,5 +356,95 @@ public final class Intelligence {
             return llmError.localizedDescription
         }
         return error.localizedDescription
+    }
+}
+
+// MARK: - Pavarotti: summary after a speaker change
+
+/// Who waits for the run in flight to end.
+struct RunWaiters {
+    var continuations: [CheckedContinuation<Void, Never>] = []
+    /// Meetings whose summary waits to be written again.
+    var resummaries: Set<UUID> = []
+}
+
+public extension Intelligence {
+    /// Pavarotti: writes the summary of `meetingID` again with the speaker names as they
+    /// are now, after the user named a speaker. Waits for a run in flight, guesses no
+    /// speakers and leaves a summary the user wrote alone.
+    func resummarize(meetingID: UUID, transcriptID: UUID) async {
+        guard waiting.resummaries.insert(meetingID).inserted else { return }
+        while inFlightMeetingID != nil {
+            await withCheckedContinuation { waiting.continuations.append($0) }
+        }
+        waiting.resummaries.remove(meetingID)
+        inFlightMeetingID = meetingID
+        defer { finishRun(meetingID) }
+
+        guard let detail = try? await store.meetingDetail(id: meetingID), !detail.editedSummary,
+              let transcript = try? await store.transcript(id: transcriptID),
+              !transcript.segments.isEmpty,
+              let modelURL = modelManager.runModelURL()
+        else { return }
+
+        jobs[meetingID] = .summarizing
+        let instructions = await settingsProvider().summaryPrompt
+        do {
+            try await runSummaryOnly(
+                meetingID: meetingID, detail: detail, transcript: transcript,
+                modelURL: modelURL, summaryInstructions: instructions
+            )
+            jobs[meetingID] = .completed
+        } catch is CancellationError {
+            jobs.removeValue(forKey: meetingID)
+        } catch {
+            jobs[meetingID] = .failed(message: shortDescription(error))
+        }
+        streamingSummary.removeValue(forKey: meetingID)
+    }
+}
+
+private extension Intelligence {
+    /// Lets everyone waiting for the run in flight check again.
+    func wakeIdleWaiters() {
+        let continuations = waiting.continuations
+        waiting.continuations.removeAll()
+        continuations.forEach { $0.resume() }
+    }
+
+    /// The summary turn alone, with every speaker named as the transcript names them now.
+    func runSummaryOnly(
+        meetingID: UUID, detail: MeetingDetailData, transcript: TranscriptData,
+        modelURL: URL, summaryInstructions: String
+    ) async throws {
+        let names = transcript.speakerAssignments
+        let firstUser = buildFirstUserContent(
+            doSpeakers: false, doSummary: true,
+            detail: detail, transcript: transcript, human: names,
+            summaryInstructions: summaryInstructions
+        )
+        try await llm.withSession(model: modelURL, config: .modelOnly) { session in
+            let contextSize = try await ContextSizing.contextSizeForAnalysis(
+                firstUser: firstUser,
+                system: IntelligencePrompts.analysisSystem,
+                followUpUsers: [],
+                tasks: .init(doSpeakers: false, doSummary: true, doTitle: false),
+                session: session
+            )
+            try await session.reconfigure(contextSize: contextSize)
+
+            let ctx = MeetingAnalyzer.Context(
+                meetingID: meetingID, detail: detail,
+                transcript: transcript, human: names,
+                doSpeakers: false, doSummary: true, doTitle: false,
+                voiceprintBlock: "",
+                summaryInstructions: summaryInstructions,
+                markSummaryEdited: false,
+                store: self.store,
+                onStage: { self.jobs[meetingID] = $0 },
+                onPartialSummary: { self.streamingSummary[meetingID] = $0 }
+            )
+            try await MeetingAnalyzer.run(session, ctx)
+        }
     }
 }
