@@ -136,12 +136,13 @@ final class InputUnit: @unchecked Sendable {
         )
     }
 
-    private static func set<Value>(
+    private static func set(
         _ unit: AudioUnit, _ property: AudioUnitPropertyID, _ scope: AudioUnitScope,
-        element: AudioUnitElement, to value: Value
+        element: AudioUnitElement, to value: some Any
     ) throws {
-        var value = value
-        let status = AudioUnitSetProperty(unit, property, scope, element, &value, UInt32(MemoryLayout<Value>.size))
+        let status = withUnsafeBytes(of: value) { bytes in
+            AudioUnitSetProperty(unit, property, scope, element, bytes.baseAddress, UInt32(bytes.count))
+        }
         try check(status, "Setting up the microphone (property \(property))")
     }
 
