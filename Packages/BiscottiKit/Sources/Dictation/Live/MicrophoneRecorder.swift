@@ -10,20 +10,27 @@ import Synchronization
 /// A fresh `AVAudioEngine` per dictation follows the current default input device, unless
 /// a connected device is chosen. The tap mixes to mono at the device rate; ``stop()``
 /// resamples once to 16 kHz.
+///
+/// Pavarotti: a Bluetooth headset like AirPods switches to its headset profile when the
+/// microphone opens, so the input changes its sample rate and the engine stops itself.
+/// The recorder then keeps what it has and records on in the new format.
 public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable {
     private static let logger = Logger(subsystem: "de.foxagon.pavarotti", category: "Dictation")
+    /// How often one dictation restarts after a format change before giving up.
+    private static let maximumRestarts = 3
 
     private struct Capture {
-        var samples: [Float] = []
-        var sampleRate: Double = 0
+        var audio = RecordedAudio(sampleRate: 0)
         var onFirstAudio: (@Sendable () -> Void)?
         var isActive = false
         var level: Float = 0
     }
 
     private let capture = Mutex(Capture())
-    /// Only touched from the caller's thread (the main actor).
+    /// Only touched from the caller's thread (the main actor), like the two below.
     private var engine: AVAudioEngine?
+    private var configurationObserver: (any NSObjectProtocol)?
+    private var restarts = 0
 
     public init() {}
 
@@ -40,28 +47,26 @@ public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable
             throw DictationError.microphoneUnavailable("No input device is available.")
         }
         capture.withLock { state in
-            state = Capture(sampleRate: sampleRate, onFirstAudio: onFirstAudio, isActive: true)
-            state.samples.reserveCapacity(Int(sampleRate) * 30)
+            state = Capture(audio: RecordedAudio(sampleRate: sampleRate), onFirstAudio: onFirstAudio, isActive: true)
+            state.audio.samples.reserveCapacity(Int(sampleRate) * 30)
         }
+        observeConfigurationChanges(of: engine)
         input.installTap(onBus: 0, bufferSize: 1024, format: format, block: makeTapHandler())
         engine.prepare()
         do {
             try engine.start()
         } catch {
             input.removeTap(onBus: 0)
+            stopObservingConfigurationChanges()
             capture.withLock { $0 = Capture() }
             throw DictationError.microphoneUnavailable(error.localizedDescription)
         }
         self.engine = engine
+        restarts = 0
     }
 
     public func stop() -> [Float] {
-        let finished = finishCapture()
-        return AudioResampler.resample(
-            finished.samples,
-            from: finished.sampleRate,
-            to: Double(DictationAudio.sampleRate)
-        )
+        finishCapture().audio.resampled
     }
 
     public func cancel() {
@@ -96,8 +101,58 @@ public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable
         }
     }
 
+    /// Pavarotti: restarts `engine` when it stops itself for a new device format. The
+    /// notification comes from an audio thread; the restart runs on the main thread.
+    private func observeConfigurationChanges(of engine: AVAudioEngine) {
+        stopObservingConfigurationChanges()
+        let engineID = ObjectIdentifier(engine)
+        configurationObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+        ) { [weak self] _ in
+            self?.restartAfterConfigurationChange(engineID: engineID)
+        }
+    }
+
+    private func stopObservingConfigurationChanges() {
+        if let configurationObserver {
+            NotificationCenter.default.removeObserver(configurationObserver)
+        }
+        configurationObserver = nil
+    }
+
+    /// Keeps what was recorded, reads the input's new format and records on in it.
+    private func restartAfterConfigurationChange(engineID: ObjectIdentifier) {
+        let isActive = capture.withLock { $0.isActive }
+        guard isActive, let engine, ObjectIdentifier(engine) == engineID, !engine.isRunning else { return }
+        guard restarts < Self.maximumRestarts else {
+            Self.logger.error("The microphone keeps changing its format; recording stopped")
+            return
+        }
+        restarts += 1
+        let input = engine.inputNode
+        input.removeTap(onBus: 0)
+        let format = input.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            Self.logger.error("The microphone has no usable format after a change; recording stopped")
+            return
+        }
+        capture.withLock { $0.audio.switchFormat(to: format.sampleRate) }
+        input.installTap(onBus: 0, bufferSize: 1024, format: format, block: makeTapHandler())
+        engine.prepare()
+        do {
+            try engine.start()
+            Self.logger.notice(
+                "The microphone changed to \(format.sampleRate, privacy: .public) Hz, \(format.channelCount, privacy: .public) ch; recording on"
+            )
+        } catch {
+            input.removeTap(onBus: 0)
+            Self.logger.error("Could not record on after a microphone change: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     @discardableResult
     private func finishCapture() -> Capture {
+        stopObservingConfigurationChanges()
         if let engine {
             engine.inputNode.removeTap(onBus: 0)
             engine.stop()
@@ -123,7 +178,7 @@ public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable
         let level = DictationAudio.meterLevel(rms: DictationAudio.rms(mono))
         let callback = capture.withLock { state -> (@Sendable () -> Void)? in
             guard state.isActive else { return nil }
-            state.samples.append(contentsOf: mono)
+            state.audio.samples.append(contentsOf: mono)
             state.level = level
             let pending = state.onFirstAudio
             state.onFirstAudio = nil
@@ -154,6 +209,30 @@ public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable
             }
         }
         return mono
+    }
+}
+
+/// Pavarotti: what one dictation recorded. Audio from before the input changed its format
+/// is kept at 16 kHz; the current format's audio stays at the device rate until the end.
+struct RecordedAudio {
+    var earlier: [Float] = []
+    var samples: [Float] = []
+    var sampleRate: Double
+
+    /// Ends the current part and starts one at `newRate`.
+    mutating func switchFormat(to newRate: Double) {
+        earlier += Self.resampled(samples, from: sampleRate)
+        samples = []
+        sampleRate = newRate
+    }
+
+    /// All of it, at ``DictationAudio/sampleRate``.
+    var resampled: [Float] {
+        earlier + Self.resampled(samples, from: sampleRate)
+    }
+
+    private static func resampled(_ samples: [Float], from rate: Double) -> [Float] {
+        AudioResampler.resample(samples, from: rate, to: Double(DictationAudio.sampleRate))
     }
 }
 
