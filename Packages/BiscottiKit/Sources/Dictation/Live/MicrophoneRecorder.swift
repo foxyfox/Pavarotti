@@ -7,61 +7,62 @@ import Synchronization
 
 /// Records a microphone into memory for one dictation.
 ///
-/// A fresh `AVAudioEngine` per dictation follows the current default input device, unless
-/// a connected device is chosen. The tap mixes to mono at the device rate; ``stop()``
-/// resamples once to 16 kHz.
+/// Pavarotti: records through a Core Audio input unit bound to the chosen device, or to
+/// the system default when none is chosen or it is not connected. Bluetooth headphones
+/// like AirPods switch to their headset profile when their microphone opens, which
+/// changes their sample rate; the recorder then keeps what it has and records on in the
+/// new rate. ``stop()`` resamples to 16 kHz.
 public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable {
     private static let logger = Logger(subsystem: "de.foxagon.pavarotti", category: "Dictation")
+    /// How often one dictation restarts after a rate change before giving up.
+    private static let maximumRestarts = 3
 
     private struct Capture {
-        var samples: [Float] = []
-        var sampleRate: Double = 0
+        var audio = RecordedAudio(sampleRate: 0)
         var onFirstAudio: (@Sendable () -> Void)?
         var isActive = false
         var level: Float = 0
     }
 
     private let capture = Mutex(Capture())
-    /// Only touched from the caller's thread (the main actor).
-    private var engine: AVAudioEngine?
+    /// Only touched from the caller's thread (the main actor), like the ones below.
+    private var input: InputUnit?
+    private var device: CoreAudioInputDevice?
+    private var rateListener: AudioObjectPropertyListenerBlock?
+    private var restarts = 0
 
     public init() {}
 
+    deinit {
+        finishCapture()
+    }
+
     public func start(microphoneID: String?, onFirstAudio: @escaping @Sendable () -> Void) throws {
         finishCapture()
-        let engine = AVAudioEngine()
-        let input = engine.inputNode
-        if let microphoneID {
-            Self.select(microphoneID, on: input)
-        }
-        let format = input.outputFormat(forBus: 0)
-        let sampleRate = format.sampleRate
-        guard sampleRate > 0, format.channelCount > 0 else {
-            throw DictationError.microphoneUnavailable("No input device is available.")
-        }
+        let device = try Self.inputDevice(preferring: microphoneID)
+        let input = try openInput(on: device)
         capture.withLock { state in
-            state = Capture(sampleRate: sampleRate, onFirstAudio: onFirstAudio, isActive: true)
-            state.samples.reserveCapacity(Int(sampleRate) * 30)
+            state = Capture(audio: RecordedAudio(sampleRate: input.sampleRate), onFirstAudio: onFirstAudio, isActive: true)
+            state.audio.samples.reserveCapacity(Int(input.sampleRate) * 30)
         }
-        input.installTap(onBus: 0, bufferSize: 1024, format: format, block: makeTapHandler())
-        engine.prepare()
+        self.input = input
+        self.device = device
+        restarts = 0
+        // Before starting: opening AirPods' microphone can switch their rate right away.
+        listenForRateChanges(of: device.objectID)
         do {
-            try engine.start()
+            try input.start()
         } catch {
-            input.removeTap(onBus: 0)
-            capture.withLock { $0 = Capture() }
-            throw DictationError.microphoneUnavailable(error.localizedDescription)
+            finishCapture()
+            throw error
         }
-        self.engine = engine
+        Self.logger.notice(
+            "Dictation records from \(device.device.name, privacy: .public) at \(input.sampleRate, privacy: .public) Hz"
+        )
     }
 
     public func stop() -> [Float] {
-        let finished = finishCapture()
-        return AudioResampler.resample(
-            finished.samples,
-            from: finished.sampleRate,
-            to: Double(DictationAudio.sampleRate)
-        )
+        finishCapture().audio.resampled
     }
 
     public func cancel() {
@@ -74,35 +75,79 @@ public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable
 
     // MARK: - Private
 
-    /// Points the input node at the device with the UID `uid`, before its format is read.
-    /// Keeps the system default when the device is not connected or refuses.
-    private static func select(_ uid: String, on input: AVAudioInputNode) {
-        guard let device = CoreAudioInputDevices.device(withUID: uid) else {
+    /// The connected device with the UID `uid`, else the system default input.
+    private static func inputDevice(preferring uid: String?) throws -> CoreAudioInputDevice {
+        if let uid {
+            if let device = CoreAudioInputDevices.device(withUID: uid) {
+                return device
+            }
             logger.warning("Microphone \(uid, privacy: .public) is not connected; recording from the system default")
+        }
+        guard let device = CoreAudioInputDevices.defaultInput() else {
+            throw DictationError.microphoneUnavailable("No input device is available.")
+        }
+        return device
+    }
+
+    private func openInput(on device: CoreAudioInputDevice) throws -> InputUnit {
+        try InputUnit.open(device: device.objectID) { [self] samples in
+            append(samples)
+        }
+    }
+
+    /// Restarts on the main thread when the device changes its rate.
+    private func listenForRateChanges(of deviceID: AudioObjectID) {
+        let listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+            self?.restartAfterRateChange(deviceID: deviceID)
+        }
+        var address = DeviceSampleRate.address
+        guard AudioObjectAddPropertyListenerBlock(deviceID, &address, .main, listener) == noErr else { return }
+        rateListener = listener
+    }
+
+    private func stopListeningForRateChanges() {
+        if let rateListener, let device {
+            var address = DeviceSampleRate.address
+            AudioObjectRemovePropertyListenerBlock(device.objectID, &address, .main, rateListener)
+        }
+        rateListener = nil
+    }
+
+    /// Keeps what was recorded and records on from the same device at its new rate.
+    private func restartAfterRateChange(deviceID: AudioObjectID) {
+        let isActive = capture.withLock { $0.isActive }
+        guard isActive, let input, let device, device.objectID == deviceID,
+              let rate = DeviceSampleRate.current(of: deviceID), abs(rate - input.sampleRate) > 0.5
+        else { return }
+        guard restarts < Self.maximumRestarts else {
+            Self.logger.error("The microphone keeps changing its rate; recording on at \(input.sampleRate, privacy: .public) Hz")
             return
         }
-        guard let unit = input.audioUnit else { return }
-        var objectID = device.objectID
-        let status = AudioUnitSetProperty(
-            unit,
-            kAudioOutputUnitProperty_CurrentDevice,
-            kAudioUnitScope_Global,
-            0,
-            &objectID,
-            UInt32(MemoryLayout<AudioObjectID>.size)
-        )
-        if status != noErr {
-            logger.error("Could not record from \(device.device.name, privacy: .public) (\(status)); recording from the system default")
+        restarts += 1
+        input.close()
+        self.input = nil
+        do {
+            let next = try openInput(on: device)
+            capture.withLock { $0.audio.switchFormat(to: next.sampleRate) }
+            do {
+                try next.start()
+            } catch {
+                next.close()
+                throw error
+            }
+            self.input = next
+            Self.logger.notice("The microphone changed to \(next.sampleRate, privacy: .public) Hz; recording on")
+        } catch {
+            Self.logger.error("Could not record on after a microphone change: \(error.localizedDescription, privacy: .public)")
         }
     }
 
     @discardableResult
     private func finishCapture() -> Capture {
-        if let engine {
-            engine.inputNode.removeTap(onBus: 0)
-            engine.stop()
-        }
-        engine = nil
+        stopListeningForRateChanges()
+        input?.close()
+        input = nil
+        device = nil
         return capture.withLock { state in
             let finished = state
             state = Capture()
@@ -110,20 +155,13 @@ public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable
         }
     }
 
-    /// Built outside any actor so the audio thread never runs actor-isolated code.
-    private func makeTapHandler() -> @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void {
-        { [self] buffer, _ in
-            append(buffer)
-        }
-    }
-
-    private func append(_ buffer: AVAudioPCMBuffer) {
-        let mono = Self.monoSamples(of: buffer)
-        guard !mono.isEmpty else { return }
-        let level = DictationAudio.meterLevel(rms: DictationAudio.rms(mono))
+    private func append(_ samples: UnsafeBufferPointer<Float>) {
+        guard !samples.isEmpty else { return }
+        let chunk = Array(samples)
+        let level = DictationAudio.meterLevel(rms: DictationAudio.rms(chunk))
         let callback = capture.withLock { state -> (@Sendable () -> Void)? in
             guard state.isActive else { return nil }
-            state.samples.append(contentsOf: mono)
+            state.audio.samples.append(contentsOf: chunk)
             state.level = level
             let pending = state.onFirstAudio
             state.onFirstAudio = nil
@@ -131,29 +169,29 @@ public final class MicrophoneRecorder: DictationAudioSource, @unchecked Sendable
         }
         callback?()
     }
+}
 
-    /// Averages all channels of a float buffer, interleaved or not.
-    static func monoSamples(of buffer: AVAudioPCMBuffer) -> [Float] {
-        guard let channels = buffer.floatChannelData else { return [] }
-        let frames = Int(buffer.frameLength)
-        let channelCount = Int(buffer.format.channelCount)
-        guard frames > 0, channelCount > 0 else { return [] }
-        let interleaved = buffer.format.isInterleaved
-        var mono = [Float](repeating: 0, count: frames)
-        for channel in 0 ..< channelCount {
-            let base = interleaved ? channels[0] + channel : channels[channel]
-            let step = interleaved ? channelCount : 1
-            for frame in 0 ..< frames {
-                mono[frame] += base[frame * step]
-            }
-        }
-        if channelCount > 1 {
-            let scale = 1 / Float(channelCount)
-            for frame in 0 ..< frames {
-                mono[frame] *= scale
-            }
-        }
-        return mono
+/// Pavarotti: what one dictation recorded. Audio from before the input changed its format
+/// is kept at 16 kHz; the current format's audio stays at the device rate until the end.
+struct RecordedAudio {
+    var earlier: [Float] = []
+    var samples: [Float] = []
+    var sampleRate: Double
+
+    /// Ends the current part and starts one at `newRate`.
+    mutating func switchFormat(to newRate: Double) {
+        earlier += Self.resampled(samples, from: sampleRate)
+        samples = []
+        sampleRate = newRate
+    }
+
+    /// All of it, at ``DictationAudio/sampleRate``.
+    var resampled: [Float] {
+        earlier + Self.resampled(samples, from: sampleRate)
+    }
+
+    private static func resampled(_ samples: [Float], from rate: Double) -> [Float] {
+        AudioResampler.resample(samples, from: rate, to: Double(DictationAudio.sampleRate))
     }
 }
 
