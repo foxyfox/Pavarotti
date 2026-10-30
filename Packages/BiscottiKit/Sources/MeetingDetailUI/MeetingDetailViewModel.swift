@@ -1055,6 +1055,25 @@ public extension MeetingDetailViewModel {
         }
     }
 
+    /// Pavarotti: whether the menu offers the meeting's note: once it is
+    /// written, or the notes folder before that.
+    var canRevealNote: Bool {
+        core.meetingNoteLocation(meetingID: meetingID) != nil
+    }
+
+    /// Pavarotti: shows the meeting's note (transcript and summary as
+    /// Markdown) in Finder, or the notes folder before it is written.
+    func revealNoteInFinder() {
+        switch core.meetingNoteLocation(meetingID: meetingID) {
+        case let .file(url):
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        case let .folder(url):
+            NSWorkspace.shared.open(url)
+        case nil:
+            break
+        }
+    }
+
     /// Copies a `biscotti://meeting/{uuid}` link for this meeting onto
     /// the pasteboard (overflow-menu item).
     func copyMeetingLink() {
@@ -1862,14 +1881,21 @@ extension MeetingDetailViewModel {
 
 // MARK: - Pavarotti: speakers in the header
 
-/// One speaker of the displayed transcript, as the meeting header shows it.
+/// One speaker of the displayed transcript, as the meeting header shows it. Speakers
+/// named as the same person are one header speaker.
 public struct HeaderSpeaker: Identifiable, Equatable, Sendable {
-    public let speakerID: Int
-    /// The transcript's own label, such as "Speaker 1".
+    /// The transcript's speakers behind this one, in ascending order.
+    public let speakerIDs: [Int]
+    /// The first speaker's own label, such as "Speaker 1".
     public let label: String
     public let person: PersonData?
-    /// How long the speaker talks, in seconds.
+    /// How long they talk together, in seconds.
     public let seconds: TimeInterval
+
+    /// The first of `speakerIDs`.
+    public var speakerID: Int {
+        speakerIDs[0]
+    }
 
     public var id: Int {
         speakerID
@@ -1897,7 +1923,8 @@ extension MeetingDetailViewModel {
         speakerSheetTranscriptID ?? displayedTranscript?.id
     }
 
-    /// The speakers of the displayed transcript, who talks most first.
+    /// The speakers of the displayed transcript, who talks most first. Speakers named as
+    /// the same person are merged into one, as diarization sometimes splits a voice.
     var headerSpeakers: [HeaderSpeaker] {
         guard let transcript = displayedTranscript else { return [] }
         var seconds: [Int: TimeInterval] = [:]
@@ -1909,17 +1936,37 @@ extension MeetingDetailViewModel {
                 labels[speakerID] = segment.speakerLabel
             }
         }
-        return seconds.map { speakerID, total in
-            HeaderSpeaker(
-                speakerID: speakerID,
-                label: labels[speakerID] ?? "",
-                person: transcript.speakerAssignments[speakerID],
-                seconds: total
+        var groups: [String: [Int]] = [:]
+        for speakerID in seconds.keys {
+            let key = transcript.speakerAssignments[speakerID].map { "person-\($0.id.uuidString)" } ?? "speaker-\(speakerID)"
+            groups[key, default: []].append(speakerID)
+        }
+        return groups.values.map { group in
+            let speakerIDs = group.sorted()
+            return HeaderSpeaker(
+                speakerIDs: speakerIDs,
+                label: labels[speakerIDs[0]] ?? "",
+                person: transcript.speakerAssignments[speakerIDs[0]],
+                seconds: speakerIDs.reduce(0) { $0 + (seconds[$1] ?? 0) }
             )
         }
         .sorted { lhs, rhs in
             lhs.seconds == rhs.seconds ? lhs.speakerID < rhs.speakerID : lhs.seconds > rhs.seconds
         }
+    }
+
+    /// Names all speakers behind a header speaker as `personID`, or removes their names
+    /// with `nil`.
+    func assignSpeakers(_ speakerIDs: [Int], personID: UUID?) async {
+        guard let transcriptID = speakerTranscriptID else { return }
+        do {
+            for speakerID in speakerIDs {
+                try await core.store.setSpeakerAssignment(speakerID: speakerID, personID: personID, for: transcriptID)
+            }
+        } catch {
+            // Non-fatal; the reload shows what was saved.
+        }
+        await reloadAfterSpeakerChange()
     }
 
     /// Who the header offers for a speaker.

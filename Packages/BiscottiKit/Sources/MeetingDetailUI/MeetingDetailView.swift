@@ -499,14 +499,12 @@ private extension MeetingDetailView {
                 choices: choices,
                 onAssign: { personID in
                     Task {
-                        await viewModel.assignSpeaker(
-                            speakerID: speaker.speakerID, personID: personID
-                        )
+                        await viewModel.assignSpeakers(speaker.speakerIDs, personID: personID)
                     }
                 },
                 onUnassign: {
                     Task {
-                        await viewModel.unassignSpeaker(speakerID: speaker.speakerID)
+                        await viewModel.assignSpeakers(speaker.speakerIDs, personID: nil)
                     }
                 },
                 onMore: {
@@ -542,6 +540,17 @@ private extension MeetingDetailView {
                     Label(
                         "Reveal recording in Finder",
                         systemImage: "folder"
+                    )
+                }
+            }
+
+            if viewModel.canRevealNote {
+                Button {
+                    viewModel.revealNoteInFinder()
+                } label: {
+                    Label(
+                        "Reveal note in Finder",
+                        systemImage: "doc.text"
                     )
                 }
             }

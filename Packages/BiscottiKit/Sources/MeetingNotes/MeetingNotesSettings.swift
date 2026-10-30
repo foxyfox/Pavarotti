@@ -66,6 +66,12 @@ public final class MeetingNotesSettingsStore: @unchecked Sendable {
         lock.withLock { files()[meetingID.uuidString] }.map { URL(fileURLWithPath: $0) }
     }
 
+    /// The note file written for `meetingID`, while it is still there.
+    public func existingNoteURL(for meetingID: UUID) -> URL? {
+        guard let url = noteURL(for: meetingID), FileManager.default.fileExists(atPath: url.path) else { return nil }
+        return url
+    }
+
     public func setNoteURL(_ url: URL?, for meetingID: UUID) {
         lock.withLock {
             var files = files()
