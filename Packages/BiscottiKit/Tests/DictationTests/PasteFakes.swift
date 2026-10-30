@@ -26,7 +26,8 @@ final class FakeSyncEnvironment: RemoteClipboardSyncEnvironment {
     var isActive = false
     var isRegular = false
     var spaceChanges = 0
-    /// Activations of the remote app that leave it behind before one brings it to the front.
+    /// Activations of the remote app (also `bringToFront`) that leave it behind before one
+    /// brings it to the front.
     var ignoredActivations = 0
     /// Runs when Pavarotti takes over, like Windows App sending the remote clipboard then.
     var onActivatePavarotti: (@MainActor () -> Void)?
@@ -67,6 +68,15 @@ final class FakeSyncEnvironment: RemoteClipboardSyncEnvironment {
 
     func activate(_ application: RemoteClipboardSyncApplication) -> Bool {
         calls.append("activate")
+        return moveToFront(application)
+    }
+
+    func bringToFront(_ application: RemoteClipboardSyncApplication) -> Bool {
+        calls.append("bringToFront")
+        return moveToFront(application)
+    }
+
+    private func moveToFront(_ application: RemoteClipboardSyncApplication) -> Bool {
         onActivate?()
         guard ignoredActivations == 0 else {
             ignoredActivations -= 1

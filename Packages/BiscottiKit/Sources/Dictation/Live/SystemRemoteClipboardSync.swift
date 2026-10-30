@@ -1,10 +1,13 @@
 import AppKit
+import ApplicationServices
 import os
 
 /// The real side of the remote clipboard sync: activates apps and shows the helper window.
 @MainActor
 final class SystemRemoteClipboardSyncEnvironment: RemoteClipboardSyncEnvironment {
     private static let logger = Logger(subsystem: "de.foxagon.pavarotti", category: "RemoteClipboardSync")
+    /// Keeps a busy remote app from stalling the paste.
+    private static let messagingTimeout: Float = 0.25
 
     private var helperWindow: RemoteClipboardSyncHelperWindow?
     private var resignActiveObserver: (any NSObjectProtocol)?
@@ -37,7 +40,11 @@ final class SystemRemoteClipboardSyncEnvironment: RemoteClipboardSyncEnvironment
         stopWaitingForResignActive()
         let window = helperWindow ?? RemoteClipboardSyncHelperWindow()
         helperWindow = window
-        if let screen = Self.screen(showing: remoteApplication) ?? NSScreen.main ?? NSScreen.screens.first {
+        let screen = Self.screen(showing: remoteApplication)
+            ?? FrontmostWindowScreen.withMouse()
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+        if let screen {
             window.setFrame(NSRect(x: screen.frame.minX, y: screen.frame.minY, width: 1, height: 1), display: false)
         }
         // The key window on the active Space comes first, so the activation stays on this
@@ -68,7 +75,25 @@ final class SystemRemoteClipboardSyncEnvironment: RemoteClipboardSyncEnvironment
         else {
             return false
         }
+        // While Pavarotti is active it hands the activation over, which the system honors
+        // more reliably than a plain request.
+        if NSApp.isActive, running.activate(from: .current) {
+            return true
+        }
         return running.activate()
+    }
+
+    func bringToFront(_ application: RemoteClipboardSyncApplication) -> Bool {
+        let activated = activate(application)
+        // Accessibility (granted for the paste) makes the app frontmost also when the system
+        // declines the activation, as it may for a window on another display or Space.
+        let element = AXUIElementCreateApplication(application.processIdentifier)
+        AXUIElementSetMessagingTimeout(element, Self.messagingTimeout)
+        let raised = AXUIElementSetAttributeValue(element, "AXFrontmost" as CFString, NSNumber(value: true)) == .success
+        if !raised {
+            Self.logger.warning("The remote app could not be made frontmost through Accessibility")
+        }
+        return activated || raised
     }
 
     func removeHelperWindow() {

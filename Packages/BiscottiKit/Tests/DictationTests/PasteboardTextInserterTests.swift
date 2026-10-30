@@ -121,7 +121,7 @@ struct PasteboardTextInserterTests {
     func remoteStaysBehind() async {
         let harness = PasteHarness(frontmost: .screenSharing)
         defer { harness.tearDown() }
-        harness.environment.ignoredActivations = 2
+        harness.environment.ignoredActivations = 100
 
         #expect(await harness.inserter.insert("Hallo", restoringClipboard: true) == .notPasted(.remoteWindowNotInFront))
         #expect(harness.poster.all.isEmpty)

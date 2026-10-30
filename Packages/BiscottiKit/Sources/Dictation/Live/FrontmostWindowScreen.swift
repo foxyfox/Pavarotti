@@ -13,15 +13,55 @@ public enum FrontmostWindowScreen {
     @MainActor
     public static func screen(showingWindowOf processIdentifier: pid_t) -> NSScreen? {
         let screens = NSScreen.screens
-        guard let windowBounds = frontmostWindowBounds(of: processIdentifier), let primary = screens.first else {
-            return nil
-        }
-        let index = bestScreenIndex(
-            for: windowBounds,
+        guard let primary = screens.first else { return nil }
+        let index = screenIndex(
+            showingWindowOf: processIdentifier,
+            windows: onScreenWindows(),
             screenFrames: screens.map(\.frame),
             primaryScreenHeight: primary.frame.maxY
         )
         return index.map { screens[$0] }
+    }
+
+    /// The screen under the mouse pointer.
+    @MainActor
+    public static func withMouse() -> NSScreen? {
+        let mouse = NSEvent.mouseLocation
+        return NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
+    }
+
+    /// A window from the window server's list, front to back.
+    struct WindowInfo: Equatable {
+        let ownerProcessIdentifier: pid_t
+        let layer: Int
+        let alpha: Double
+        let bounds: CGRect
+    }
+
+    /// The index of the screen with the app's frontmost visible window. Normal windows
+    /// (layer 0) come first. Windows without alpha, without size or off every screen are
+    /// skipped: a full-screen app keeps such a window for its hidden title bar in front of
+    /// the window that shows its content.
+    static func screenIndex(
+        showingWindowOf processIdentifier: pid_t,
+        windows: [WindowInfo],
+        screenFrames: [CGRect],
+        primaryScreenHeight: CGFloat
+    ) -> Int? {
+        let visible = windows.filter { window in
+            window.ownerProcessIdentifier == processIdentifier && window.alpha > 0 && !window.bounds.isEmpty
+        }
+        let candidates = visible.filter { $0.layer == 0 } + visible.filter { $0.layer != 0 }
+        for window in candidates {
+            if let index = bestScreenIndex(
+                for: window.bounds,
+                screenFrames: screenFrames,
+                primaryScreenHeight: primaryScreenHeight
+            ) {
+                return index
+            }
+        }
+        return nil
     }
 
     /// The index of the screen frame that shows most of the window. Window bounds start at
@@ -43,16 +83,24 @@ public enum FrontmostWindowScreen {
         return best
     }
 
-    /// The bounds of the app's frontmost normal window.
-    private static func frontmostWindowBounds(of processIdentifier: pid_t) -> CGRect? {
+    /// Every window on screen, front to back.
+    private static func onScreenWindows() -> [WindowInfo] {
         let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-        guard let windows = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return nil }
+        guard let windows = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return [] }
         // Keys spelled out: the kCGWindow… constants are these strings.
-        let window = windows.first { info in
-            (info["kCGWindowOwnerPID"] as? Int).map(pid_t.init) == processIdentifier
-                && (info["kCGWindowLayer"] as? Int) == 0
+        return windows.compactMap { info in
+            guard let owner = info["kCGWindowOwnerPID"] as? Int,
+                  let boundsDictionary = info["kCGWindowBounds"] as? NSDictionary,
+                  let bounds = CGRect(dictionaryRepresentation: boundsDictionary as CFDictionary)
+            else {
+                return nil
+            }
+            return WindowInfo(
+                ownerProcessIdentifier: pid_t(owner),
+                layer: info["kCGWindowLayer"] as? Int ?? 0,
+                alpha: info["kCGWindowAlpha"] as? Double ?? 1,
+                bounds: bounds
+            )
         }
-        guard let bounds = window?["kCGWindowBounds"] as? NSDictionary else { return nil }
-        return CGRect(dictionaryRepresentation: bounds as CFDictionary)
     }
 }

@@ -261,7 +261,7 @@ public final class DictationController {
                 watchForCorrections(after: text)
             }
         case .copiedOnly:
-            fail("Copied to the clipboard. Allow Accessibility access so Pavarotti can paste for you.")
+            fail(String(localized: "Copied to the clipboard. Allow Accessibility access so Pavarotti can paste for you."))
         case let .notPasted(reason):
             if let message = reason.message {
                 fail(message)

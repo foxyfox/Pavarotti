@@ -109,7 +109,7 @@ struct RemoteClipboardSyncNudgerTests {
         #expect(sleeper.pauses == [.milliseconds(150), .milliseconds(150)])
     }
 
-    @Test("a remote app that stays behind is activated once more and polled")
+    @Test("a remote app that stays behind is brought to the front and polled")
     func reactivationRetry() async {
         let environment = FakeSyncEnvironment()
         environment.ignoredActivations = 1
@@ -119,13 +119,31 @@ struct RemoteClipboardSyncNudgerTests {
             .nudge(expectedBundleIdentifier: "com.apple.ScreenSharing") {}
 
         #expect(outcome == .nudged(.screenSharing))
-        #expect(environment.calls == ["activatePavarotti", "activate", "activate", "removeHelperWindow"])
+        #expect(environment.calls == ["activatePavarotti", "activate", "bringToFront", "removeHelperWindow"])
+    }
+
+    @Test("a slow remote app is brought to the front again every 100 ms until it is back")
+    func slowReactivation() async {
+        let environment = FakeSyncEnvironment()
+        // The first activation and two tries to bring it to the front leave it behind.
+        environment.ignoredActivations = 3
+        let sleeper = FakeSleep()
+        let nudger = makeNudger(environment, sleeper: sleeper)
+
+        let outcome = await nudger.nudge(expectedBundleIdentifier: "com.apple.ScreenSharing") {}
+
+        #expect(outcome == .nudged(.screenSharing))
+        #expect(nudger.isFrontmost(.screenSharing))
+        #expect(environment.calls.count(where: { $0 == "bringToFront" }) == 3)
+        #expect(environment.calls.last == "removeHelperWindow")
+        // Back at the third try, 200 ms in; the poll after it sees it in front.
+        #expect(sleeper.pauses.count(where: { $0 == .milliseconds(25) }) == 9)
     }
 
     @Test("a remote app that never comes back is reported and the helper window waits")
     func remoteStaysBehind() async {
         let environment = FakeSyncEnvironment()
-        environment.ignoredActivations = 2
+        environment.ignoredActivations = 100
         let sleeper = FakeSleep()
         let nudger = makeNudger(environment, sleeper: sleeper)
 
@@ -134,8 +152,9 @@ struct RemoteClipboardSyncNudgerTests {
         #expect(outcome == .nudged(.screenSharing))
         #expect(!nudger.isFrontmost(.screenSharing))
         #expect(environment.calls.last == "removeHelperWindowLater")
-        // Ten polls of 25 ms fill the 250 ms retry window.
-        #expect(sleeper.pauses.count(where: { $0 == .milliseconds(25) }) == 10)
+        // Forty polls of 25 ms fill the one-second retry window, with a try every 100 ms.
+        #expect(sleeper.pauses.count(where: { $0 == .milliseconds(25) }) == 40)
+        #expect(environment.calls.count(where: { $0 == "bringToFront" }) == 10)
     }
 
     @Test("pauses come from the hidden defaults, within 0 to 5 seconds")
