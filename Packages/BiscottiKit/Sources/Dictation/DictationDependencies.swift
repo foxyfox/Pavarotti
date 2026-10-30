@@ -209,9 +209,9 @@ public enum PasteSkipReason: Equatable, Sendable {
     public var message: String? {
         switch self {
         case .remoteWindowNotInFront:
-            "Not pasted: the remote desktop was no longer in front. The text is on the clipboard."
+            String(localized: "Not pasted: the remote desktop was no longer in front. The text is on the clipboard.")
         case .clipboardChanged:
-            "Not pasted: the clipboard changed during the sync with the remote desktop. The text is in Recent Dictations."
+            String(localized: "Not pasted: the clipboard changed during the sync with the remote desktop. The text is in Recent Dictations.")
         case .cancelled:
             nil
         }

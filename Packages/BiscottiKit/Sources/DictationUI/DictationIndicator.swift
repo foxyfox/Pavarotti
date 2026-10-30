@@ -83,7 +83,7 @@ public final class DictationIndicator {
         self.panel = panel
         guard !panel.isVisible else { return }
         // Placed when it appears, so it does not jump while you talk.
-        let screen = FrontmostWindowScreen.ofFrontmostApplication() ?? Self.screenWithMouse() ?? NSScreen.main
+        let screen = FrontmostWindowScreen.ofFrontmostApplication() ?? FrontmostWindowScreen.withMouse() ?? NSScreen.main
         if let frame = screen?.visibleFrame {
             let originY = controller.settings.bubble.position == .top
                 ? frame.maxY - Self.topMargin - Self.size.height
@@ -91,11 +91,6 @@ public final class DictationIndicator {
             panel.setFrameOrigin(NSPoint(x: frame.midX - Self.size.width / 2, y: originY))
         }
         panel.orderFrontRegardless()
-    }
-
-    private static func screenWithMouse() -> NSScreen? {
-        let mouse = NSEvent.mouseLocation
-        return NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
     }
 
     private func makePanel() -> NSPanel {

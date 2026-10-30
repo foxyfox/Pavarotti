@@ -62,10 +62,12 @@ struct RemoteClipboardSyncNudgeSettings: Equatable {
     /// Whether the nudge still runs while Pavarotti shows a window. Activating a regular app
     /// may switch to the Space of its window.
     var nudgesWhenRegular = true
-    /// When the remote app is not in front after the reactivation pause, it is activated once
-    /// more and checked every `reactivationRetryPollInterval` for up to `reactivationRetryTimeout`.
+    /// When the remote app is not in front after the reactivation pause, it is brought to the
+    /// front every `reactivationRetryInterval` and checked every `reactivationRetryPollInterval`
+    /// for up to `reactivationRetryTimeout`. A Space or display switch can take that long.
     var reactivationRetryPollInterval = Duration.milliseconds(25)
-    var reactivationRetryTimeout = Duration.milliseconds(250)
+    var reactivationRetryInterval = Duration.milliseconds(100)
+    var reactivationRetryTimeout = Duration.seconds(1)
 
     static func load(from defaults: UserDefaults) -> RemoteClipboardSyncNudgeSettings {
         var settings = RemoteClipboardSyncNudgeSettings()
@@ -111,6 +113,9 @@ protocol RemoteClipboardSyncEnvironment: AnyObject {
     func activatePavarotti(over remoteApplication: RemoteClipboardSyncApplication)
     /// Activates the remote app again. `false` when it no longer runs or refused.
     func activate(_ application: RemoteClipboardSyncApplication) -> Bool
+    /// Activates the remote app and also makes it frontmost through Accessibility, for when
+    /// the system declined the activation. `false` when neither worked.
+    func bringToFront(_ application: RemoteClipboardSyncApplication) -> Bool
     /// Orders the helper window out, once another app is active again.
     func removeHelperWindow()
     /// Keeps the helper window as Pavarotti's key window while Pavarotti is still active and
@@ -211,8 +216,8 @@ final class RemoteClipboardSyncNudger {
     }
 
     /// Activates the remote app again and waits `reactivationDuration`. If it refused or is not
-    /// in front after that, activates it once more and polls briefly. Never cut short by
-    /// cancellation: the remote app has to be back in front.
+    /// in front after that, brings it to the front repeatedly while polling. Never cut short
+    /// by cancellation: the remote app has to be back in front.
     private func reactivate(
         _ remote: RemoteClipboardSyncApplication,
         in environment: any RemoteClipboardSyncEnvironment,
@@ -223,10 +228,15 @@ final class RemoteClipboardSyncNudger {
         if reactivated, isFrontmost(remote) {
             return (true, false)
         }
-        Self.logger.warning("Remote app not in front after the nudge, activating it once more")
-        reactivated = environment.activate(remote)
+        let frontmost = environment.frontmostApplication()?.bundleIdentifier ?? "nil"
+        Self.logger.warning("Remote app not in front after the nudge, bringing it to the front: frontmost=\(frontmost, privacy: .public)")
         var waited = Duration.zero
+        var nextAttempt = Duration.zero
         while !isFrontmost(remote), waited < settings.reactivationRetryTimeout {
+            if waited >= nextAttempt {
+                reactivated = environment.bringToFront(remote)
+                nextAttempt += settings.reactivationRetryInterval
+            }
             await sleepIgnoringCancellation(settings.reactivationRetryPollInterval)
             waited += settings.reactivationRetryPollInterval
         }
