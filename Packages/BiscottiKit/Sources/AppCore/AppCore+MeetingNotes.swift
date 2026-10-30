@@ -39,6 +39,18 @@ public extension AppCore {
         writeMeetingNote(meetingID: meetingID)
     }
 
+    /// Where Finder shows the note of `meetingID`: the note file once it is written, else
+    /// the notes folder while notes are on and the folder exists. `nil` when neither.
+    func meetingNoteLocation(meetingID: UUID) -> MeetingNoteLocation? {
+        let settingsStore = MeetingNotesSettingsStore()
+        if let file = settingsStore.existingNoteURL(for: meetingID) {
+            return .file(file)
+        }
+        let settings = settingsStore.load()
+        guard settings.isEnabled, FileManager.default.fileExists(atPath: settings.folder.path) else { return nil }
+        return .folder(settings.folder)
+    }
+
     /// Takes over TypeWhisper's notes folder and "Besprechungsnotizen" prompt, once. A
     /// summary prompt the user already changed stays.
     func importTypeWhisperNotesSetup() async {
@@ -79,4 +91,12 @@ public extension AppCore {
             logger.error("Meeting note failed: \(error.localizedDescription, privacy: .public)")
         }
     }
+}
+
+/// Pavarotti: what "Reveal note in Finder" shows.
+public enum MeetingNoteLocation: Equatable, Sendable {
+    /// The meeting's note.
+    case file(URL)
+    /// The notes folder, before the meeting's note is written.
+    case folder(URL)
 }

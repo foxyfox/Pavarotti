@@ -40,6 +40,23 @@ struct MeetingNoteTranscriptTests {
         #expect(spoken.wordCount == 5)
     }
 
+    @Test("Speakers named as the same person speak in one paragraph")
+    func mergesSamePerson() {
+        let franziska = PersonData(id: UUID(), name: "Franziska")
+        let spoken = MeetingNoteTranscript(TranscriptData(
+            id: UUID(),
+            createdAt: Date(),
+            speakerCount: 3,
+            segments: [segment(0, 0, "Hallo."), segment(1, 1, "Wir fahren."), segment(2, 2, "Nach München."), segment(3, 3, "Gut.")],
+            speakerAssignments: [0: franziska, 1: franziska, 2: franziska]
+        ))
+        #expect(spoken.text == """
+        [00:00] Franziska: Hallo. Wir fahren. Nach München.
+
+        [00:03] Sprecher 4: Gut.
+        """)
+    }
+
     @Test("Segments without a speaker use their label or \"Unbekannt\"")
     func unassignedSegments() {
         let spoken = MeetingNoteTranscript(transcript([

@@ -12,20 +12,22 @@ public struct MeetingNoteTranscript: Equatable, Sendable {
 
     public var utterances: [Utterance]
 
-    /// Consecutive segments of one speaker become one utterance. Assigned speakers go by
-    /// their person's name, others by "Sprecher N" (diarization IDs count from 0).
+    /// Consecutive segments of one speaker become one utterance; speakers named as the
+    /// same person count as one. Assigned speakers go by their person's name, others by
+    /// "Sprecher N" (diarization IDs count from 0).
     public init(_ transcript: TranscriptData) {
         var utterances: [Utterance] = []
-        var lastSpeakerID: Int?
+        var lastSpeaker: String?
         for segment in transcript.segments {
             let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { continue }
-            if let speakerID = segment.speakerID, speakerID == lastSpeakerID, let last = utterances.indices.last {
+            let speaker = Self.speakerKey(of: segment, in: transcript)
+            if let speaker, speaker == lastSpeaker, let last = utterances.indices.last {
                 utterances[last].text += " " + text
                 continue
             }
             utterances.append(Utterance(speaker: Self.name(of: segment, in: transcript), start: segment.startTime, text: text))
-            lastSpeakerID = segment.speakerID
+            lastSpeaker = speaker
         }
         self.utterances = utterances
     }
@@ -55,6 +57,16 @@ public struct MeetingNoteTranscript: Equatable, Sendable {
     static func timestamp(_ seconds: TimeInterval) -> String {
         let total = seconds.isFinite ? max(0, Int(seconds.rounded(.down))) : 0
         return String(format: "%02ld:%02ld", total / 60, total % 60)
+    }
+
+    /// Who says the segment: the assigned person, else the diarization speaker. `nil`
+    /// without a speaker, so such segments stay apart.
+    private static func speakerKey(of segment: SegmentData, in transcript: TranscriptData) -> String? {
+        guard let speakerID = segment.speakerID else { return nil }
+        if let person = transcript.speakerAssignments[speakerID] {
+            return "person-\(person.id.uuidString)"
+        }
+        return "speaker-\(speakerID)"
     }
 
     private static func name(of segment: SegmentData, in transcript: TranscriptData) -> String {

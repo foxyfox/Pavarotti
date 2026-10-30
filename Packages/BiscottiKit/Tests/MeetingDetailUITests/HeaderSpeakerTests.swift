@@ -97,6 +97,31 @@ struct HeaderSpeakerTests {
         #expect(transcript?.speakerAssignments[1]?.name == "Daniel")
     }
 
+    @Test("speakers named as the same person are one, and its menu names them all")
+    func mergesSamePerson() async throws {
+        let header = try await HeaderFixture.make()
+        defer { header.fix.cleanup() }
+        let daniel = try await header.fix.store.findOrCreatePerson(name: "Daniel", email: nil)
+        let priya = try await header.fix.store.findOrCreatePerson(name: "Priya", email: nil)
+        let viewModel = await header.loadedViewModel()
+
+        await viewModel.assignSpeaker(speakerID: 0, personID: daniel)
+        await viewModel.assignSpeaker(speakerID: 1, personID: daniel)
+
+        let merged = viewModel.headerSpeakers
+        #expect(merged.count == 1)
+        #expect(merged.first?.speakerIDs == [0, 1])
+        #expect(merged.first?.name == "Daniel")
+        #expect(merged.first?.seconds == 15)
+
+        await viewModel.assignSpeakers([0, 1], personID: priya)
+        #expect(viewModel.displayedSpeakerNames == [0: "Priya", 1: "Priya"])
+
+        await viewModel.assignSpeakers([0, 1], personID: nil)
+        #expect(viewModel.headerSpeakers.map(\.speakerIDs) == [[1], [0]])
+        #expect(viewModel.displayedSpeakerNames.isEmpty)
+    }
+
     @Test("offers people from the meeting first, then everyone else, each once")
     func choices() async throws {
         let header = try await HeaderFixture.make()

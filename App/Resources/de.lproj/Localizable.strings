@@ -532,3 +532,4 @@
 "Not pasted: the remote desktop was no longer in front. The text is on the clipboard." = "Nicht eingefügt: Das Remote-Fenster war nicht mehr im Vordergrund. Der Text liegt in der Zwischenablage.";
 "Not pasted: the clipboard changed during the sync with the remote desktop. The text is in Recent Dictations." = "Nicht eingefügt: Die Zwischenablage hat sich beim Abgleich mit dem Remote-Desktop geändert. Der Text steht unter „Letzte Diktate“.";
 "Copied to the clipboard. Allow Accessibility access so Pavarotti can paste for you." = "In die Zwischenablage kopiert. Erlaube den Zugriff auf Bedienungshilfen, damit Pavarotti für dich einfügen kann.";
+"Reveal note in Finder" = "Notiz im Finder zeigen";

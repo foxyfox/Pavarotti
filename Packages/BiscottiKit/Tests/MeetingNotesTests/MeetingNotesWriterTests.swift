@@ -54,6 +54,23 @@ struct MeetingNotesWriterTests {
         try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
     }
 
+    @Test("The note file is found while it is still there")
+    func existingNote() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        let store = fixture.store
+        #expect(store.existingNoteURL(for: meetingID) == nil)
+
+        try FileManager.default.createDirectory(at: fixture.folder, withIntermediateDirectories: true)
+        let note = fixture.folder.appending(path: "Standup - Notizen.md")
+        try Data("# Standup".utf8).write(to: note)
+        store.setNoteURL(note, for: meetingID)
+        #expect(store.existingNoteURL(for: meetingID)?.path == note.path)
+
+        try FileManager.default.removeItem(at: note)
+        #expect(store.existingNoteURL(for: meetingID) == nil)
+    }
+
     @Test("A note is written into the folder under the fork's file name")
     func writesNote() throws {
         let fixture = try makeFixture()
