@@ -13,6 +13,8 @@ final class SystemRemoteClipboardSyncEnvironment: RemoteClipboardSyncEnvironment
     private var resignActiveObserver: (any NSObjectProtocol)?
     private var spaceChangeObserver: (any NSObjectProtocol)?
     private var activeSpaceChanges = 0
+    /// Set while a nudge runs Pavarotti as an accessory app, see `activatePavarotti(over:)`.
+    private var restoresRegularPolicy = false
 
     func frontmostApplication() -> RemoteClipboardSyncApplication? {
         guard let application = NSWorkspace.shared.frontmostApplication else { return nil }
@@ -38,6 +40,12 @@ final class SystemRemoteClipboardSyncEnvironment: RemoteClipboardSyncEnvironment
         observeActiveSpaceChanges()
         // A helper window kept from an earlier nudge is reused; this nudge decides when it goes.
         stopWaitingForResignActive()
+        // While a Pavarotti window is open the app is regular, and a regular app can show no
+        // window on another app's full-screen Space: activating it switched to the desktop
+        // of its own window. For the nudge it runs as an accessory app, as without windows.
+        if NSApp.activationPolicy() == .regular, NSApp.setActivationPolicy(.accessory) {
+            restoresRegularPolicy = true
+        }
         let window = helperWindow ?? RemoteClipboardSyncHelperWindow()
         helperWindow = window
         let screen = Self.screen(showing: remoteApplication)
@@ -99,6 +107,16 @@ final class SystemRemoteClipboardSyncEnvironment: RemoteClipboardSyncEnvironment
     func removeHelperWindow() {
         stopWaitingForResignActive()
         helperWindow?.orderOut(nil)
+        restoreActivationPolicy()
+    }
+
+    /// Makes Pavarotti regular again after a nudge, while one of its windows is still open.
+    private func restoreActivationPolicy() {
+        guard restoresRegularPolicy else { return }
+        restoresRegularPolicy = false
+        if NSApp.windows.contains(where: { $0.isVisible && $0.canBecomeMain }) {
+            NSApp.setActivationPolicy(.regular)
+        }
     }
 
     func removeHelperWindowWhenPavarottiResignsActive() {
