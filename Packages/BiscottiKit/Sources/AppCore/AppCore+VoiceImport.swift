@@ -4,12 +4,14 @@ import os
 
 /// Pavarotti: the voices of Andreas's TypeWhisper fork, taken over once at launch.
 public extension AppCore {
-    /// Starts what Pavarotti adds at launch: the meeting notes and, once, the voices from
-    /// TypeWhisper. Called by the app, not by `onLaunch`, so tests never touch the user's
-    /// notes folder or TypeWhisper's files.
+    /// Starts what Pavarotti adds at launch: the meeting notes, once the voices from
+    /// TypeWhisper, and the calendar's people joined with the people the user named.
+    /// Called by the app, not by `onLaunch`, so tests never touch the user's notes folder
+    /// or TypeWhisper's files.
     func startForkFeatures() async {
         await startMeetingNotes()
         await importTypeWhisperVoicesOnce()
+        await linkCalendarPeopleToNamedPeople()
     }
 
     /// Takes over TypeWhisper's voices the first time Pavarotti finds them and logs what

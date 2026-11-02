@@ -1969,6 +1969,17 @@ extension MeetingDetailViewModel {
         await reloadAfterSpeakerChange()
     }
 
+    /// Takes `otherID` into `personID`, as both are the same human, and shows the result.
+    func mergePerson(_ otherID: UUID, into personID: UUID) async {
+        do {
+            try await core.mergePerson(otherID, into: personID)
+            try await refreshData()
+        } catch {
+            // Non-fatal; the reload shows what was saved.
+        }
+        await reloadAfterSpeakerChange()
+    }
+
     /// Who the header offers for a speaker.
     var speakerChoices: SpeakerChoices {
         var choices = SpeakerChoices()

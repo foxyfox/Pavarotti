@@ -220,6 +220,10 @@ public actor DataStore {
                 // Name reconciliation is out of scope for 3.1.
                 return match.id
             }
+            // Pavarotti: the person the user named with the same full name.
+            if let linked = try personLinked(name: name, email: email) {
+                return linked
+            }
         }
 
         // Then try to match by exact name (only if no email provided)
@@ -229,6 +233,10 @@ public actor DataStore {
             )
             if let match = try context.fetch(descriptor).first {
                 return match.id
+            }
+            // Pavarotti: the same full name in another spelling.
+            if let match = try personMatchingFullName(name) {
+                return match
             }
         }
 
