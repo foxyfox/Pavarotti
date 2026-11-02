@@ -16,7 +16,9 @@ import os
 // Windows App sends the remote clipboard to this Mac when its window loses focus, which would
 // replace a payload written before, and takes the local clipboard when it is activated again.
 // Pavarotti may have a window open on another Space, and activating it could switch there, so
-// it first shows an invisible helper window on the active Space and makes it key.
+// it first shows an invisible helper window on the active Space and makes it key. With a window
+// open Pavarotti is a regular app, which cannot show one on another app's full-screen Space, so
+// it runs as an accessory app for the nudge.
 
 /// An application the nudge activates again.
 struct RemoteClipboardSyncApplication: Equatable {
