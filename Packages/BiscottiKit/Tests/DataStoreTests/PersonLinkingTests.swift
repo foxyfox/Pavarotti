@@ -20,7 +20,7 @@ struct PersonLinkingTests {
         }
     }
 
-    private func person(_ store: DataStore, _ id: UUID) async throws -> PersonData? {
+    private func personData(_ store: DataStore, _ id: UUID) async throws -> PersonData? {
         try await store.people(ids: [id])[id]
     }
 
@@ -84,7 +84,7 @@ struct PersonLinkingTests {
 
         #expect(fromCalendar == named)
         #expect(fromAddress == named)
-        let person = try await person(store, named)
+        let person = try await personData(store, named)
         #expect(person?.name == "Max Müller")
         #expect(person?.email == "mm@firma.de")
     }
@@ -104,7 +104,7 @@ struct PersonLinkingTests {
         let work = try await store.findOrCreatePerson(name: "Max Müller", email: "max@work.de")
 
         #expect(try await store.findOrCreatePerson(name: "Max Müller", email: "max@home.de") == work)
-        #expect(try await person(store, work)?.email == "max@work.de")
+        #expect(try await personData(store, work)?.email == "max@work.de")
     }
 
     @Test("First names alone and ambiguous names stay apart")
@@ -117,7 +117,7 @@ struct PersonLinkingTests {
         _ = try await insertPerson(store, name: "Tom Berg", email: nil)
         _ = try await insertPerson(store, name: "Tom Berg", email: nil)
         let calendarTom = try await store.findOrCreatePerson(name: "Tom Berg", email: "tom@firma.de")
-        #expect(try await person(store, calendarTom)?.email == "tom@firma.de")
+        #expect(try await personData(store, calendarTom)?.email == "tom@firma.de")
         #expect(try await store.allPersonData().count(where: { $0.name == "Tom Berg" }) == 3)
     }
 
@@ -166,7 +166,7 @@ struct PersonLinkingTests {
         try await store.mergePerson(source, into: target)
         try await store.mergePerson(target, into: target)
 
-        let person = try await person(store, target)
+        let person = try await personData(store, target)
         #expect(person?.name == "Max")
         #expect(person?.email == "max@work.de")
     }
@@ -185,8 +185,8 @@ struct PersonLinkingTests {
         #expect(merges == [PersonMerge(sourceID: calendar, targetID: named)])
         let people = try #require(try await store.meetingPeople(id: meetingID))
         #expect(Set(people.participants.map(\.id)) == [named, unnamed])
-        #expect(try await person(store, named)?.email == "max.mueller@firma.de")
-        #expect(try await person(store, unnamed)?.name == "Eva Schmidt")
+        #expect(try await personData(store, named)?.email == "max.mueller@firma.de")
+        #expect(try await personData(store, unnamed)?.name == "Eva Schmidt")
         #expect(try await store.linkCalendarPeopleToNamedPeople().isEmpty)
     }
 }

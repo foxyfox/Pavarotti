@@ -10,7 +10,7 @@ public enum PersonNames {
         if isRealName(trimmed) { return trimmed }
         let address = email?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !address.isEmpty else { return trimmed.isEmpty ? "Unknown" : trimmed }
-        return name(fromEmail: address) ?? address
+        return Self.name(fromEmail: address) ?? address
     }
 
     /// Whether `name` names someone, rather than being empty, "Unknown" or an address.
@@ -24,8 +24,8 @@ public enum PersonNames {
     /// addresses like "info@" or "m.mustermann@".
     public static func name(fromEmail email: String) -> String? {
         guard let local = email.split(separator: "@").first, email.contains("@") else { return nil }
-        let base = local.split(separator: "+").first.map(String.init) ?? String(local)
-        let parts = base.split(whereSeparator: { ".-_".contains($0) }).map(String.init)
+        let base = local.split(separator: "+").first.map { String($0) } ?? String(local)
+        let parts = base.split(whereSeparator: { ".-_".contains($0) }).map { String($0) }
         guard parts.count >= 2, parts.allSatisfy({ $0.count >= 2 && $0.allSatisfy(\.isLetter) }) else {
             return nil
         }
@@ -51,7 +51,7 @@ public enum PersonNames {
         var keys: Set<String> = []
         for variant in [lowered, spelledOut] {
             let folded = variant.folding(options: [.diacriticInsensitive], locale: nil)
-            let words = folded.split(whereSeparator: { !$0.isLetter }).map(String.init)
+            let words = folded.split(whereSeparator: { !$0.isLetter }).map { String($0) }
             if words.count >= 2 {
                 keys.insert(words.joined(separator: " "))
             }
@@ -62,7 +62,7 @@ public enum PersonNames {
     /// The match keys of a person: those of their name and of the name in their address.
     public static func matchKeys(name: String, email: String?) -> Set<String> {
         var keys = matchKeys(name)
-        if let email, let fromEmail = self.name(fromEmail: email) {
+        if let email, let fromEmail = Self.name(fromEmail: email) {
             keys.formUnion(matchKeys(fromEmail))
         }
         return keys
