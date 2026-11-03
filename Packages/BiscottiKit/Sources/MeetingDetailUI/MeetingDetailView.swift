@@ -511,6 +511,10 @@ private extension MeetingDetailView {
                     Task {
                         await viewModel.openSpeakerSheet(speakerID: speaker.speakerID)
                     }
+                },
+                onMerge: { otherID in
+                    guard let personID = speaker.person?.id else { return }
+                    Task { await viewModel.mergePerson(otherID, into: personID) }
                 }
             )
         }

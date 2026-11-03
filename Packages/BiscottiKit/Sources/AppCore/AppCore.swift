@@ -1801,14 +1801,14 @@ extension AppCore {
 
         if let org = input.organizer {
             let pid = try await store.findOrCreatePerson(
-                name: org.name ?? "Unknown", email: org.email
+                name: PersonNames.displayName(name: org.name, email: org.email), email: org.email
             )
             organizerID = pid
             if org.isCurrentUser { currentUserID = pid }
         }
         for attendee in input.attendees {
             let pid = try await store.findOrCreatePerson(
-                name: attendee.name ?? "Unknown", email: attendee.email
+                name: PersonNames.displayName(name: attendee.name, email: attendee.email), email: attendee.email
             )
             personIDs.append(pid)
             if currentUserID == nil, attendee.isCurrentUser { currentUserID = pid }

@@ -11,6 +11,8 @@ struct SpeakerChip: View {
     let onUnassign: () -> Void
     /// Opens the speaker sheet, which can also add a new person.
     let onMore: () -> Void
+    /// Takes the chosen person into the speaker's person: they are the same human.
+    let onMerge: (UUID) -> Void
 
     @State private var hovered = false
 
@@ -89,9 +91,35 @@ struct SpeakerChip: View {
 
         Button("Other Person\u{2026}") { onMore() }
 
-        if speaker.person != nil {
+        if let person = speaker.person {
+            sameMenu(for: person)
             Button("Remove Name") { onUnassign() }
         }
+    }
+
+    /// Joins someone into the speaker's person, such as the calendar's entry with their
+    /// email: the person keeps their name and voice and takes the other's meetings.
+    @ViewBuilder
+    private func sameMenu(for person: PersonData) -> some View {
+        let candidates = (choices.invited + choices.inMeeting).filter { $0.id != person.id }
+        let others = choices.others.filter { $0.id != person.id }
+        if !candidates.isEmpty || !others.isEmpty {
+            Menu("Same Person As") {
+                ForEach(candidates) { mergeButton($0) }
+                if !others.isEmpty {
+                    if !candidates.isEmpty { Divider() }
+                    Menu("Everyone") {
+                        ForEach(others) { mergeButton($0) }
+                    }
+                }
+            }
+            .help(Text("Joins the chosen entry into this person, for example the calendar entry with their email."))
+        }
+    }
+
+    private func mergeButton(_ other: PersonData) -> some View {
+        let title = other.email.map { "\(other.name) (\($0))" } ?? other.name
+        return Button(title) { onMerge(other.id) }
     }
 
     /// A person to pick, checked when the speaker is already them.
