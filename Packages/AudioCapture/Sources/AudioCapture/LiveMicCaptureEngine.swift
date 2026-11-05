@@ -194,8 +194,15 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
             selectInputDevice(inputID, on: input)
         }
         try input.setVoiceProcessingEnabled(true)
-        if let inputID, let companionOutputID {
-            routeVoiceProcessing(input: inputID, output: companionOutputID, on: input)
+        // Pavarotti: once voice processing is on, the unit's input is element 1 and its
+        // output element 0. Setting only element 0 before enabling it (above) left the
+        // unit on the system default input, so Bluetooth headphones that are the default
+        // input had their mic opened and dropped into the low-quality headset mode.
+        if let inputID,
+           companionOutputID != nil || inputID != CoreAudioHelpers.defaultInputDeviceID(),
+           let outputID = companionOutputID ?? CoreAudioHelpers.defaultOutputDeviceID()
+        {
+            routeVoiceProcessing(input: inputID, output: outputID, on: input)
         }
         input.voiceProcessingOtherAudioDuckingConfiguration = .init(
             enableAdvancedDucking: false, duckingLevel: .min
@@ -367,6 +374,14 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
                 logger.error("Voice processing device \(device, privacy: .public) on element \(element, privacy: .public) failed: \(status, privacy: .public)")
             }
         }
+        logger.notice("Voice processing routed: input=\(Self.currentDevice(of: unit, element: 1), privacy: .public) output=\(Self.currentDevice(of: unit, element: 0), privacy: .public)")
+    }
+
+    private static func currentDevice(of unit: AudioUnit, element: AudioUnitElement) -> AudioObjectID {
+        var device = AudioObjectID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        AudioUnitGetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, element, &device, &size)
+        return device
     }
 
     /// Restores the output rate saved before this capture changed it, unless
