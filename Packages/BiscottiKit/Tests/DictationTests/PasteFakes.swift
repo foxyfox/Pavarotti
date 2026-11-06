@@ -102,9 +102,12 @@ final class FakeSyncEnvironment: RemoteClipboardSyncEnvironment {
 final class FakeSleep {
     private(set) var pauses: [Duration] = []
     var cancelsCall: Int?
+    /// Runs at each pause, before it returns.
+    var onPause: (@MainActor (Duration) -> Void)?
 
     func record(_ duration: Duration) throws {
         pauses.append(duration)
+        onPause?(duration)
         if pauses.count == cancelsCall {
             throw CancellationError()
         }
@@ -158,6 +161,7 @@ final class PasteHarness {
     }
 
     func tearDown() {
+        inserter.echoGuard?.cancel()
         pasteboard.releaseGlobally()
     }
 

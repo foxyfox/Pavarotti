@@ -4,7 +4,8 @@ import Carbon.HIToolbox
 import os
 
 /// Pastes text into the focused app: puts it on the clipboard, sends ⌘V and then
-/// puts the previous clipboard contents back.
+/// puts the previous clipboard contents back, with every type it held (rich text, images,
+/// files), the way 1Password and MacWhisper do.
 ///
 /// ⌘V goes out as a real key chord (SyntheticKeyboard.swift). A remote desktop client
 /// (RemoteSession.swift) gets slower chord timing, the clipboard sync before the paste
@@ -21,6 +22,8 @@ public final class PasteboardTextInserter: TextInserting {
     private let trust: any AccessibilityTrust
     private let system: PasteSystem
     private let nudger: RemoteClipboardSyncNudger
+    /// Watches for a remote desktop client sending the text back after the restore.
+    private(set) var echoGuard: Task<Void, Never>?
 
     public convenience init(trust: any AccessibilityTrust) {
         self.init(
@@ -43,6 +46,7 @@ public final class PasteboardTextInserter: TextInserting {
     }
 
     public func insert(_ text: String, restoringClipboard: Bool) async -> TextInsertionResult {
+        echoGuard?.cancel()
         let payload = ClipboardPayload(text: text, restoresClipboard: restoringClipboard, pasteboard: pasteboard)
         guard trust.isTrusted else {
             // Leave the text on the clipboard so it can be pasted by hand.
@@ -80,7 +84,9 @@ public final class PasteboardTextInserter: TextInserting {
         switch await syncClipboard(payload, target: target) {
         case .paste:
             await postPasteShortcut(timing: .remote)
-            await restore(payload, after: system.remoteRestoreDelay)
+            if await restore(payload, after: system.remoteRestoreDelay) {
+                watchForEcho(of: payload)
+            }
             return .pasted
         case let .skip(reason):
             Self.logger.warning(
@@ -155,13 +161,48 @@ public final class PasteboardTextInserter: TextInserting {
 
     /// Puts the user's clipboard back after `delay`, while the clipboard still holds the text.
     /// The pause is not cut short by cancelling: the target app may still be reading the text.
-    private func restore(_ payload: ClipboardPayload, after delay: Duration) async {
-        guard payload.hasSavedClipboard else { return }
+    /// Returns whether the clipboard was put back.
+    @discardableResult
+    private func restore(_ payload: ClipboardPayload, after delay: Duration) async -> Bool {
+        guard payload.hasSavedClipboard else { return false }
         let pause = system.sleep
         _ = await Task { @MainActor in
             try await pause(delay)
         }.result
-        payload.restoreIfOnClipboard()
+        guard payload.restoreIfOnClipboard() else {
+            Self.logger.info("Clipboard not restored: something else was copied after the paste")
+            return false
+        }
+        return true
+    }
+
+    /// A remote desktop client copies the pasted text from the remote computer's clipboard
+    /// back to the Mac, sometimes only after the restore. When that happens within
+    /// `echoWatch`, the user's clipboard is put back once more. Runs on its own, so the
+    /// dictation finishes without waiting for it.
+    private func watchForEcho(of payload: ClipboardPayload) {
+        let pause = system.sleep
+        let interval = system.echoCheckInterval
+        let checks = max(1, Int(system.echoWatch / interval))
+        echoGuard = Task { @MainActor in
+            for _ in 0 ..< checks {
+                do {
+                    try await pause(interval)
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                switch payload.restoreIfEchoed() {
+                case .unchanged:
+                    continue
+                case .restoredAgain:
+                    Self.logger.info("The remote desktop sent the text back; clipboard restored again")
+                    return
+                case .replaced:
+                    return
+                }
+            }
+        }
     }
 }
 
@@ -177,6 +218,9 @@ struct PasteSystem {
     var restoreDelay = Duration.milliseconds(400)
     /// Remote desktop clients send the clipboard over the network first.
     var remoteRestoreDelay = Duration.milliseconds(1500)
+    /// How long after a remote restore the clipboard is watched for the text coming back.
+    var echoWatch = Duration.seconds(4)
+    var echoCheckInterval = Duration.milliseconds(250)
     var sleep: @MainActor @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
 
     static var live: PasteSystem {
@@ -200,6 +244,8 @@ final class ClipboardPayload {
     private var saved: PasteboardSnapshot?
     /// The clipboard's change count right after the text was written, `nil` before.
     private var owned: Int?
+    /// The clipboard's change count right after the restore, `nil` before.
+    private var restored: Int?
 
     init(text: String, restoresClipboard: Bool, pasteboard: NSPasteboard) {
         self.text = text
@@ -237,10 +283,37 @@ final class ClipboardPayload {
         }
     }
 
-    /// Puts the user's clipboard back, unless something else wrote to the clipboard since.
-    func restoreIfOnClipboard() {
-        guard isOnClipboard, let saved else { return }
+    /// Whether the clipboard holds the text: written by Pavarotti, or written again with the
+    /// same text, as a remote desktop client does when it copies the remote clipboard back.
+    var holdsText: Bool {
+        isOnClipboard || pasteboard.string(forType: .string) == text
+    }
+
+    /// Puts the user's clipboard back, unless something other than the text was copied since.
+    /// Returns whether it did.
+    @discardableResult
+    func restoreIfOnClipboard() -> Bool {
+        guard holdsText, let saved else { return false }
         saved.restore(to: pasteboard)
+        restored = pasteboard.changeCount
+        return true
+    }
+
+    enum EchoCheck: Equatable {
+        case unchanged
+        case restoredAgain
+        /// Something else was copied; the clipboard is left alone.
+        case replaced
+    }
+
+    /// After a restore: puts the user's clipboard back again when the text came back.
+    func restoreIfEchoed() -> EchoCheck {
+        guard let restored, let saved else { return .replaced }
+        guard pasteboard.changeCount != restored else { return .unchanged }
+        guard pasteboard.string(forType: .string) == text else { return .replaced }
+        saved.restore(to: pasteboard)
+        self.restored = pasteboard.changeCount
+        return .restoredAgain
     }
 }
 
