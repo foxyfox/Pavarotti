@@ -78,8 +78,96 @@ struct PasteboardTextInserterTests {
         #expect(result == .pasted)
         #expect(harness.environment.calls == ["activatePavarotti", "activate", "removeHelperWindow"])
         #expect(harness.poster.all.map(\.events) == [SyntheticKeyEvent.commandChord(keyCode: keyV, timing: .remote)])
-        #expect(harness.sleeper.pauses == [.milliseconds(150), .milliseconds(150), .milliseconds(300), .milliseconds(1500)])
+        #expect(Array(harness.sleeper.pauses.prefix(4)) == [
+            .milliseconds(150), .milliseconds(150), .milliseconds(300), .milliseconds(1500)
+        ])
         #expect(harness.clipboard == "Vorher")
+    }
+
+    @Test("every type of the user's clipboard comes back")
+    func restoresAllTypes() async {
+        let harness = PasteHarness(frontmost: .textEdit)
+        defer { harness.tearDown() }
+        let rtf = Data("{\\rtf1 Vorher}".utf8)
+        let png = Data([0x89, 0x50, 0x4E, 0x47])
+        let first = NSPasteboardItem()
+        first.setString("Vorher", forType: .string)
+        first.setData(rtf, forType: .rtf)
+        let second = NSPasteboardItem()
+        second.setData(png, forType: .png)
+        harness.pasteboard.clearContents()
+        harness.pasteboard.writeObjects([first, second])
+
+        #expect(await harness.inserter.insert("Hallo Welt", restoringClipboard: true) == .pasted)
+
+        let items = harness.pasteboard.pasteboardItems ?? []
+        #expect(items.count == 2)
+        #expect(items.first?.string(forType: .string) == "Vorher")
+        #expect(items.first?.data(forType: .rtf) == rtf)
+        #expect(items.last?.data(forType: .png) == png)
+        #expect(items.first?.types.contains(PasteboardTextInserter.transientType) == false)
+    }
+
+    @Test("another copy after the paste is kept")
+    func keepsNewerCopy() async {
+        let harness = PasteHarness(frontmost: .textEdit)
+        defer { harness.tearDown() }
+        harness.copy("Vorher")
+        harness.sleeper.onPause = { _ in harness.copy("Neu kopiert") }
+
+        #expect(await harness.inserter.insert("Hallo Welt", restoringClipboard: true) == .pasted)
+        #expect(harness.clipboard == "Neu kopiert")
+    }
+
+    @Test("the text written again before the restore still gets the clipboard back")
+    func restoresAfterRewrite() async {
+        let harness = PasteHarness(frontmost: .screenSharing)
+        defer { harness.tearDown() }
+        harness.copy("Vorher")
+        harness.sleeper.onPause = { pause in
+            if pause == .milliseconds(1500) {
+                harness.copy("Hallo Welt")
+            }
+        }
+
+        #expect(await harness.inserter.insert("Hallo Welt", restoringClipboard: true) == .pasted)
+        #expect(harness.clipboard == "Vorher")
+    }
+
+    @Test("text the remote desktop sends back after the restore is replaced again")
+    func restoresAfterEcho() async {
+        let harness = PasteHarness(frontmost: .screenSharing)
+        defer { harness.tearDown() }
+        harness.copy("Vorher")
+        var echoes = 0
+        harness.sleeper.onPause = { pause in
+            if pause == .milliseconds(250), echoes == 0 {
+                echoes += 1
+                harness.copy("Hallo Welt")
+            }
+        }
+
+        #expect(await harness.inserter.insert("Hallo Welt", restoringClipboard: true) == .pasted)
+        await harness.inserter.echoGuard?.value
+        #expect(echoes == 1)
+        #expect(harness.clipboard == "Vorher")
+    }
+
+    @Test("a copy after the remote restore is kept")
+    func keepsCopyAfterRemoteRestore() async {
+        let harness = PasteHarness(frontmost: .screenSharing)
+        defer { harness.tearDown() }
+        harness.copy("Vorher")
+        harness.sleeper.onPause = { pause in
+            if pause == .milliseconds(250) {
+                harness.copy("Neu kopiert")
+            }
+        }
+
+        #expect(await harness.inserter.insert("Hallo Welt", restoringClipboard: true) == .pasted)
+        await harness.inserter.echoGuard?.value
+        #expect(harness.clipboard == "Neu kopiert")
+        #expect(harness.sleeper.pauses.count(where: { $0 == .milliseconds(250) }) == 1)
     }
 
     @Test("what the remote client sent when it lost focus is the clipboard that comes back")
