@@ -33,6 +33,9 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
     private var silenceNode: AVAudioSourceNode?
     private var configObserver: NSObjectProtocol?
     private var outputRateOverride: (deviceID: AudioObjectID, originalRate: Double)?
+    /// Pavarotti: the device the unit's silent output goes to when the default
+    /// output is busy at another rate (see `VPIOOutputPlan`). Owned by engineQueue.
+    private var companionOutputID: AudioObjectID?
 
     /// Pavarotti: the Core Audio UID of the microphone to record from, read at every
     /// engine build; `nil` or a disconnected device means the system default.
@@ -178,7 +181,8 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
 
         let inputID = resolveInputDevice()
         inputDeviceID = inputID
-        ensureOutputRateMatchesInput(inputID)
+        companionOutputID = nil
+        prepareOutputSide(for: inputID)
 
         let newEngine = AVAudioEngine()
         engine = newEngine // store early so teardownEngine() works on failure
@@ -190,6 +194,16 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
             selectInputDevice(inputID, on: input)
         }
         try input.setVoiceProcessingEnabled(true)
+        // Pavarotti: once voice processing is on, the unit's input is element 1 and its
+        // output element 0. Setting only element 0 before enabling it (above) left the
+        // unit on the system default input, so Bluetooth headphones that are the default
+        // input had their mic opened and dropped into the low-quality headset mode.
+        if let inputID,
+           companionOutputID != nil || inputID != CoreAudioHelpers.defaultInputDeviceID(),
+           let outputID = companionOutputID ?? CoreAudioHelpers.defaultOutputDeviceID()
+        {
+            routeVoiceProcessing(input: inputID, output: outputID, on: input)
+        }
         input.voiceProcessingOtherAudioDuckingConfiguration = .init(
             enableAdvancedDucking: false, duckingLevel: .min
         )
@@ -207,7 +221,7 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
             throw CaptureError.micEngineFailed("The microphone has no usable audio format.")
         }
         let inputID = inputDeviceID ?? CoreAudioHelpers.defaultInputDeviceID() ?? 0
-        let outputID = CoreAudioHelpers.defaultOutputDeviceID() ?? 0
+        let outputID = companionOutputID ?? CoreAudioHelpers.defaultOutputDeviceID() ?? 0
         let inputRate = CoreAudioHelpers.nominalSampleRate(for: inputID) ?? 0
         let outputRate = CoreAudioHelpers.nominalSampleRate(for: outputID) ?? 0
         let inputName = CoreAudioHelpers.deviceName(for: inputID) ?? "unknown"
@@ -297,14 +311,37 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
         }
     }
 
-    /// Reconciles duplex device rates before creating the voice-processing graph.
-    private func ensureOutputRateMatchesInput(_ inputID: AudioObjectID?) {
+    /// Pavarotti: reconciles the duplex rates before the voice-processing graph is
+    /// built, without reclocking an output that another app is playing through.
+    private func prepareOutputSide(for inputID: AudioObjectID?) {
         guard let inID = inputID,
               let inRate = CoreAudioHelpers.nominalSampleRate(for: inID),
               let outID = CoreAudioHelpers.defaultOutputDeviceID(),
               let outRate = CoreAudioHelpers.nominalSampleRate(for: outID)
         else { return }
-        guard abs(inRate - outRate) > 1 else { return }
+        let busy = abs(inRate - outRate) > 1 && CoreAudioHelpers.isRunningSomewhere(outID)
+        let plan = VPIOOutputPlanner.plan(
+            input: (inID, inRate),
+            defaultOutput: VPIODefaultOutput(id: outID, rate: outRate, isBusy: busy),
+            candidates: busy ? CoreAudioHelpers.outputCandidates() : []
+        )
+        switch plan {
+        case .useDefaultOutput:
+            return
+        case .reclockDefaultOutput:
+            reclockOutput(outID, from: outRate, to: inRate)
+        case let .useCompanionOutput(companion):
+            companionOutputID = companion
+            let name = CoreAudioHelpers.deviceName(for: companion) ?? "unknown"
+            logger.notice("Mic output busy at \(outRate, privacy: .public) Hz (mic \(inRate, privacy: .public) Hz); voice processing output goes to \(name, privacy: .public) id=\(companion, privacy: .public) instead of reclocking device \(outID, privacy: .public)")
+        case .leaveRatesAlone:
+            logger.warning("Mic output busy at \(outRate, privacy: .public) Hz (mic \(inRate, privacy: .public) Hz) and no device runs at the mic rate; leaving device \(outID, privacy: .public) unchanged")
+        }
+    }
+
+    /// Raises an idle output device to the mic rate (upstream behaviour) and
+    /// remembers its rate for `restoreOutputRate()`.
+    private func reclockOutput(_ outID: AudioObjectID, from outRate: Double, to inRate: Double) {
         if outputRateOverride == nil {
             outputRateOverride = (outID, outRate)
         }
@@ -320,11 +357,44 @@ final class LiveMicCaptureEngine: CaptureEngine, @unchecked Sendable { // swiftl
         logger.notice("Mic output rate after request: device=\(outID, privacy: .public), actual=\(rateAfter, privacy: .public)")
     }
 
-    /// Restores the output rate saved before this capture changed it.
+    /// Pavarotti: points the voice-processing unit at `input` (element 1) and its
+    /// silent output at `output` (element 0), the layout Chromium uses for VPIO.
+    private func routeVoiceProcessing(input inputID: AudioObjectID, output outputID: AudioObjectID, on node: AVAudioInputNode) {
+        guard let unit = node.audioUnit else {
+            logger.error("Voice processing unit missing; output stays on the default device")
+            return
+        }
+        for (element, device) in [(AudioUnitElement(1), inputID), (AudioUnitElement(0), outputID)] {
+            var objectID = device
+            let status = AudioUnitSetProperty(
+                unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global,
+                element, &objectID, UInt32(MemoryLayout<AudioObjectID>.size)
+            )
+            if status != noErr {
+                logger.error("Voice processing device \(device, privacy: .public) on element \(element, privacy: .public) failed: \(status, privacy: .public)")
+            }
+        }
+        logger.notice("Voice processing routed: input=\(Self.currentDevice(of: unit, element: 1), privacy: .public) output=\(Self.currentDevice(of: unit, element: 0), privacy: .public)")
+    }
+
+    private static func currentDevice(of unit: AudioUnit, element: AudioUnitElement) -> AudioObjectID {
+        var device = AudioObjectID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        AudioUnitGetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, element, &device, &size)
+        return device
+    }
+
+    /// Restores the output rate saved before this capture changed it, unless
+    /// another app is playing through the device by now: switching it back under
+    /// a running call would shift that call's pitch. It then stays at the mic rate.
     private func restoreOutputRate() {
         guard let override = outputRateOverride else { return }
-        CoreAudioHelpers.setNominalSampleRate(override.originalRate, for: override.deviceID)
         outputRateOverride = nil
+        if CoreAudioHelpers.isRunningSomewhere(override.deviceID) {
+            logger.notice("Output device \(override.deviceID, privacy: .public) is in use; keeping its rate instead of restoring \(override.originalRate, privacy: .public) Hz")
+            return
+        }
+        CoreAudioHelpers.setNominalSampleRate(override.originalRate, for: override.deviceID)
     }
 
     /// Connects a silent source node straight to `outputNode` (not through
