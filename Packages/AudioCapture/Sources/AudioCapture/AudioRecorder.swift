@@ -19,7 +19,7 @@ private let logger = Logger(subsystem: "net.scosman.biscotti.audiocapture", cate
 /// Each stream writes ADTS AAC directly during capture via `ExtAudioFile` —
 /// no post-recording encode step. Route-change events are handled by
 /// reconnecting the affected engine without tearing down the session.
-public actor AudioRecorder {
+public actor AudioRecorder { // swiftlint:disable:this type_body_length
     // MARK: - Dependencies (injected via seams)
 
     private let systemEngine: any CaptureEngine
@@ -28,6 +28,9 @@ public actor AudioRecorder {
     private let permissionChecker: any SystemPermissionChecker
     private let micPermissionChecker: any MicPermissionChecker
     private let encoder: EncoderSettings
+    /// Pavarotti: runs on the finished files after both engines have stopped
+    /// (bleed removal and level for the passively recorded microphone).
+    private let postProcessor: (@Sendable (CapturePaths) async -> Void)?
 
     // MARK: - Session state
 
@@ -99,7 +102,8 @@ public actor AudioRecorder {
         deviceChangeProvider: some DeviceChangeProvider,
         permissionChecker: some SystemPermissionChecker,
         micPermissionChecker: some MicPermissionChecker,
-        encoder: EncoderSettings = .voice
+        encoder: EncoderSettings = .voice,
+        postProcessor: (@Sendable (CapturePaths) async -> Void)? = nil
     ) {
         self.systemEngine = systemEngine
         self.micEngine = micEngine
@@ -107,6 +111,7 @@ public actor AudioRecorder {
         self.permissionChecker = permissionChecker
         self.micPermissionChecker = micPermissionChecker
         self.encoder = encoder
+        self.postProcessor = postProcessor
     }
 
     // MARK: - Permissions
@@ -362,6 +367,10 @@ public actor AudioRecorder {
         if let writeErr = micEngine.writeError {
             logger.error("Mic audio write error during recording (OSStatus \(writeErr, privacy: .public))")
             lastMicWriteError = writeErr
+        }
+
+        if let paths, let postProcessor {
+            await postProcessor(paths)
         }
 
         logger.info("Capture stopped")
@@ -678,11 +687,28 @@ public extension AudioRecorder {
         let permissionChecker = LiveSystemPermissionChecker()
         return AudioRecorder(
             systemEngine: LiveSystemCaptureEngine(permissionChecker: permissionChecker, encoder: encoder),
-            micEngine: LiveMicCaptureEngine(encoder: encoder, preferredInputUID: preferredMicrophone),
+            // Pavarotti: the microphone is only listened to; Apple's voice processing
+            // (`LiveMicCaptureEngine`) interfered with running calls. Its echo removal
+            // and level control happen on the finished track instead.
+            micEngine: PassiveMicCaptureEngine(encoder: encoder, preferredInputUID: preferredMicrophone),
             deviceChangeProvider: LiveDeviceChangeProvider(),
             permissionChecker: permissionChecker,
             micPermissionChecker: LiveMicPermissionChecker(),
-            encoder: encoder
+            encoder: encoder,
+            postProcessor: { paths in
+                await Task.detached(priority: .userInitiated) {
+                    do {
+                        // `defaults write de.foxagon.pavarotti PavarottiKeepRawMicTrack -bool YES`
+                        // keeps the unprocessed track as mic.raw.aac for diagnosis.
+                        let keepRaw = UserDefaults.standard.bool(forKey: "PavarottiKeepRawMicTrack")
+                        try MicTrackCleaner.clean(
+                            mic: paths.micAAC, system: paths.systemAAC, encoder: encoder, keepRaw: keepRaw
+                        )
+                    } catch {
+                        logger.error("Mic track pass failed, keeping the recorded track: \(error.localizedDescription, privacy: .public)")
+                    }
+                }.value
+            }
         )
     }
 }
