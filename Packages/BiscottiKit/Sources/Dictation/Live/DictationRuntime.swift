@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// The live dictation setup the app starts at launch: the controller with real
 /// microphone, Cohere engine, clipboard, sounds and volume, plus the shortcut monitor.
@@ -6,6 +7,7 @@ import Foundation
 public final class DictationRuntime {
     public let controller: DictationController
     private let shortcuts: ShortcutMonitor
+    private let escape = EscapeKeyMonitor()
     private var trustPolling: Task<Void, Never>?
 
     public init(controller: DictationController, shortcuts: ShortcutMonitor = ShortcutMonitor()) {
@@ -40,9 +42,25 @@ public final class DictationRuntime {
         controller.onShortcutConfigurationChange = { [weak self] in
             self?.refreshShortcut()
         }
+        escape.onEscape = { [weak self] in
+            self?.controller.discard()
+        }
         controller.activate()
         refreshShortcut()
+        followDictating()
         pollAccessibilityUntilTrusted()
+    }
+
+    /// Holds Escape only while a dictation runs, so it can be discarded.
+    private func followDictating() {
+        let dictating = withObservationTracking {
+            controller.isDictating
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.followDictating()
+            }
+        }
+        escape.setActive(dictating)
     }
 
     /// Re-installs the monitor for the current shortcut. Global key monitors only
