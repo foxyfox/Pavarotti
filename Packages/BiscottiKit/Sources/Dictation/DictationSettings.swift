@@ -52,6 +52,8 @@ public struct DictationSettings: Codable, Equatable, Sendable {
     public var bubble = BubbleAppearance()
     /// How long the speech model stays in memory without being used.
     public var modelRetention = ModelRetention.always
+    /// Pressing the shortcut twice to end a dictation structures it with the AI model.
+    public var structuresOnDoublePress = true
 
     public init() {}
 
@@ -76,6 +78,7 @@ public struct DictationSettings: Codable, Equatable, Sendable {
         microphone = container.value(.microphone, default: defaults.microphone)
         bubble = container.value(.bubble, default: defaults.bubble)
         modelRetention = container.value(.modelRetention, default: defaults.modelRetention)
+        structuresOnDoublePress = container.value(.structuresOnDoublePress, default: defaults.structuresOnDoublePress)
     }
 }
 

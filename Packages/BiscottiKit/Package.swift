@@ -255,6 +255,7 @@ let package = Package(
                 "Recording",
                 "TranscriptionService",
                 .product(name: "AudioCapture", package: "AudioCapture"),
+                .product(name: "LocalLLM", package: "LocalLLM"),
                 .product(name: "Transcription", package: "Transcription")
             ],
             swiftSettings: warningsAsErrors

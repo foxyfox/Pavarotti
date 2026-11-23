@@ -6,6 +6,8 @@ enum BubbleContent {
     case listening(elapsed: String, levels: [Float])
     /// The waveform keeps the last levels, dimmed, and the time stops.
     case transcribing(elapsed: String, levels: [Float])
+    /// Pavarotti: a braindump goes through the AI model.
+    case structuring
     case message(String, systemImage: String, tint: Color)
 }
 
@@ -43,6 +45,8 @@ struct DictationBubble: View {
             }
         case let .transcribing(elapsed, levels):
             transcribing(elapsed: elapsed, levels: levels)
+        case .structuring:
+            structuring
         case let .message(text, systemImage, tint):
             HStack(spacing: metrics.spacing) {
                 Image(systemName: systemImage)
@@ -75,6 +79,23 @@ struct DictationBubble: View {
                 }
                 waveform(levels, width: metrics.waveform.width)
                     .opacity(0.35)
+            }
+        }
+    }
+
+    /// A spinner and sparkles; the large bubble also says "Structuring".
+    private var structuring: some View {
+        HStack(spacing: metrics.spacing) {
+            ProgressView()
+                .controlSize(appearance.size == .large ? .small : .mini)
+            Image(systemName: "sparkles")
+                .font(.system(size: metrics.fontSize, weight: .medium))
+                .foregroundStyle(Color.primary)
+                .symbolEffect(.pulse)
+            if appearance.size == .large {
+                Text("Structuring\u{2026}")
+                    .font(.system(size: metrics.fontSize, weight: .medium))
+                    .foregroundStyle(Color.primary)
             }
         }
     }

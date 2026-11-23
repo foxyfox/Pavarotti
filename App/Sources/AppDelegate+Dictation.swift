@@ -12,6 +12,7 @@ extension AppDelegate {
     func startDictation(on appCore: AppCore) {
         let runtime = DictationRuntime.live()
         appCore.dictation = runtime.controller
+        runtime.controller.structurer = appCore.braindumpStructurer()
         runtime.controller.importFromTypeWhisperOnce()
         runtime.activate()
         let indicator = DictationIndicator(controller: runtime.controller)

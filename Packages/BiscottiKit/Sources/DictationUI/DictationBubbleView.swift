@@ -32,6 +32,8 @@ struct DictationBubbleView: View {
         switch controller.phase {
         case .listening:
             .listening(elapsed: meter.elapsedText, levels: meter.levels)
+        case .transcribing where controller.isBraindump:
+            .structuring
         case .transcribing:
             .transcribing(elapsed: meter.elapsedText, levels: meter.levels)
         case let .failed(text):
