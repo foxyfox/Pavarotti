@@ -47,6 +47,11 @@ public final class DictationController {
     public internal(set) var notice: String?
     /// While true, shortcut events are ignored (the settings are recording a new shortcut).
     public var isCapturingShortcut = false
+    /// Pavarotti: whether the running dictation becomes a structured note (the shortcut
+    /// was pressed twice to end it). See ``structurer``.
+    public internal(set) var isBraindump = false
+    /// Pavarotti: structures a braindump with the AI model. `nil` turns braindumps off.
+    @ObservationIgnored public var structurer: (any DictationTextStructuring)?
 
     /// Called after the shortcut, the on/off switch or Accessibility access changed,
     /// so the shortcut monitor can follow.
@@ -54,9 +59,10 @@ public final class DictationController {
 
     let dependencies: DictationDependencies
     let store: DictationSettingsStore
-    private let now: @MainActor () -> TimeInterval
+    let now: @MainActor () -> TimeInterval
     @ObservationIgnored private var gesture: ShortcutGesture
-    @ObservationIgnored private var session = 0
+    @ObservationIgnored var session = 0
+    @ObservationIgnored var braindumpWindow: BraindumpWindow?
     @ObservationIgnored private var duckTask: Task<Void, Never>?
     @ObservationIgnored private var limitTask: Task<Void, Never>?
     @ObservationIgnored private var failureTask: Task<Void, Never>?
@@ -96,9 +102,10 @@ public final class DictationController {
     /// Handles an event from the shortcut monitor.
     public func handle(_ event: ShortcutEvent) {
         guard settings.isEnabled, !isCapturingShortcut else { return }
+        guard !catchesBraindumpPress(event) else { return }
         switch gesture.handle(event, at: now()) {
         case .start: start()
-        case .stop: stop()
+        case .stop: stopFromShortcut()
         case .cancel: cancel()
         case nil: break
         }
@@ -130,6 +137,7 @@ public final class DictationController {
             return
         }
         session += 1
+        resetBraindump()
         let current = session
         do {
             try dependencies.audio.start(microphoneID: settings.microphone?.id) { [weak self] in
@@ -189,6 +197,7 @@ public final class DictationController {
             break
         }
         session += 1
+        resetBraindump()
         gesture.reset()
         if phase == .listening || phase == .transcribing {
             phase = .idle
@@ -239,7 +248,8 @@ public final class DictationController {
                 fail(DictationError.nothingHeard.localizedDescription)
                 return
             }
-            let text = dependencies.dictionary.apply(to: heard)
+            let text = await braindumpText(from: dependencies.dictionary.apply(to: heard), session: started)
+            guard started == session, !Task.isCancelled else { return }
             lastTranscript = text
             // Kept before pasting, so text that does not arrive can be copied again.
             dependencies.history.record(text)

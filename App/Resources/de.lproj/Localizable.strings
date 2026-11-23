@@ -535,3 +535,8 @@
 "Not pasted: the clipboard changed during the sync with the remote desktop. The text is in Recent Dictations." = "Nicht eingefügt: Die Zwischenablage hat sich beim Abgleich mit dem Remote-Desktop geändert. Der Text steht unter „Letzte Diktate“.";
 "Copied to the clipboard. Allow Accessibility access so Pavarotti can paste for you." = "In die Zwischenablage kopiert. Erlaube den Zugriff auf Bedienungshilfen, damit Pavarotti für dich einfügen kann.";
 "Reveal note in Finder" = "Notiz im Finder zeigen";
+"Structuring…" = "Strukturiert…";
+"Braindump on double press" = "Braindump per Doppeldruck";
+"Press the shortcut twice quickly to end a dictation, and the AI model turns what you said into a structured note with headings and lists before it is pasted. Uses the model under AI Enhancements." = "Drück das Kürzel zum Beenden zweimal schnell hintereinander, dann macht das KI-Modell aus dem Gesagten eine strukturierte Notiz mit Überschriften und Listen, bevor sie eingefügt wird. Nutzt das Modell unter KI-Funktionen.";
+"Not structured: %@ The text was pasted as spoken." = "Nicht strukturiert: %@ Der Text wurde so eingefügt, wie du ihn gesprochen hast.";
+"Download an AI model under AI Enhancements or set up an AI provider." = "Lade ein KI-Modell unter KI-Funktionen oder richte einen KI-Anbieter ein.";

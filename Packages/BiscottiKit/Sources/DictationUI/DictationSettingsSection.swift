@@ -25,6 +25,7 @@ public struct DictationSettingsSection: View {
                         Text(mode.displayName).tag(mode)
                     }
                 }
+                braindumpRow
                 languageRows
             }
             // Meeting recordings use the same microphone, so it stays visible without dictation.
