@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Local speech-to-text with Cohere Transcribe (or Parakeet) through CrispASR.
 ///
@@ -13,6 +14,7 @@ public actor CohereTranscriber {
     /// Whether answers should carry exact word times from the aligner, see
     /// ``setWordTimes(_:)``.
     private var wantsWordTimes = false
+    private static let logger = Logger(subsystem: "de.foxagon.pavarotti", category: "CohereTranscriber")
 
     public init(
         model: CohereModel = .recommended,
@@ -97,6 +99,15 @@ public actor CohereTranscriber {
         {
             requested = retry
             answer = try await server.transcribe(request(audio: audio, filename: filename, language: retry))
+        }
+        if !detectsItself, language == .automatic {
+            // Language ID can mistake German for English; the text then shows it.
+            let written = LanguagePolicy.resolvedLanguage(requested: requested, detected: answer.language)
+            if let corrected = TextLanguageCheck.correctedLanguage(for: answer.text, transcribedAs: written) {
+                Self.logger.info("Text reads as \(corrected, privacy: .public), not \(written, privacy: .public); redoing")
+                requested = corrected
+                answer = try await server.transcribe(request(audio: audio, filename: filename, language: corrected))
+            }
         }
         let segments = (answer.segments ?? []).map { segment in
             CohereTranscription.Segment(
