@@ -85,7 +85,7 @@ processing. It is retried by `AudioRecorder`; cause still open.
   86 blocks at 0.49 s delay; microphone level in the 547 seconds with far-side audio
   -35.3 dBFS raw, -52.5 dBFS cleaned (median reduction 19.7 dB); the 170 near-side-only
   seconds changed by -0.5 dB; lag between raw and cleaned track 0 samples, equal length.
-  Five more calls (11-17 to 11-20): 130 to 243 blocks each, 80 to 100 % of them cleaned,
+  Five more calls (11-17 to 11-20): 79 to 285 blocks each, 80 to 100 % of them cleaned,
   same 0.49 s delay.
 
 - Recording 2026-11-12 (Bluetooth speaker, still VPIO, canceller blind): far side on the mic track
@@ -115,4 +115,8 @@ processing. It is retried by `AudioRecorder`; cause still open.
   raises the noise. Not yet measured in the fork.
 - Outputs with more than 0.7 s latency (AirPlay) are outside the delay search and stay
   untouched.
+- A microphone that never comes back during a recording is retried and logged, but the
+  user is not told; the track then ends in silence.
+- A default-input change that keeps the capture on the same device is ignored; the
+  listeners on the device itself cover format changes and removal.
 - Noise suppression and Mic Modes (Voice Isolation) came with VPIO and are gone.

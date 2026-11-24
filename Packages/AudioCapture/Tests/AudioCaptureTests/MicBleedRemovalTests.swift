@@ -302,7 +302,7 @@ struct PassiveMicHardwareTests {
         engine.setOnFirstBuffer { value in anchor.withLock { $0 = value } }
         try await engine.start(writingTo: url)
         try await Task.sleep(for: .seconds(4))
-        // A route change rebuilds the input; it must come back on the same microphone.
+        // A route change that keeps the microphone must not interrupt the capture.
         try await engine.reconnect()
         try await Task.sleep(for: .seconds(4))
         let busyDuring = CoreAudioHelpers.isRunningSomewhere(outputID)

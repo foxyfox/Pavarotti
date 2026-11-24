@@ -119,7 +119,13 @@ final class PassiveMicCaptureEngine: CaptureEngine, @unchecked Sendable {
                     cont.resume()
                     return
                 }
-                rebuildOrRetry(reason: "reconnect")
+                // A default-input change that does not move this capture to
+                // another device needs no rebuild (each one costs half a second).
+                if let running, running.device == resolveInputDevice() {
+                    logger.notice("Passive mic reconnect: already on device \(running.device, privacy: .public), nothing to do")
+                } else {
+                    rebuildOrRetry(reason: "reconnect")
+                }
                 cont.resume()
             }
         }
@@ -130,6 +136,8 @@ final class PassiveMicCaptureEngine: CaptureEngine, @unchecked Sendable {
     /// is tried again until it works or the recording stops.
     private func rebuildOrRetry(reason: String, attempt: Int = 0) {
         teardownEngine()
+        // Invalidates a retry that is still waiting from an earlier failure.
+        generation += 1
         do {
             try buildAndStartEngine()
             if attempt > 0 {
