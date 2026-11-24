@@ -18,10 +18,13 @@ private let logger = Logger(subsystem: "net.scosman.biscotti.audiocapture", cate
 /// bleed left in the recording whenever the unit's output was not the device the
 /// call played through.
 ///
-/// This engine opens the chosen microphone for input and nothing else. It never
-/// reads or changes an output device, a sample rate or the default input, so a
-/// running call cannot notice it. Echo and level are handled after the recording
-/// by `MicTrackCleaner`.
+/// This engine reads the chosen microphone straight from the audio HAL (an IO
+/// proc on that one device) and touches nothing else: no output device, no
+/// sample rate, and never the default input. `AVAudioEngine` is not used: its
+/// input node belongs to the default input, and with Bluetooth headphones as
+/// default it opened their microphone (headset mode) and then failed to start on
+/// the chosen 48 kHz microphone (-10868, 2026-11-23/24). Echo and level are
+/// handled after the recording by `MicTrackCleaner`.
 final class PassiveMicCaptureEngine: CaptureEngine, @unchecked Sendable {
     private let encoder: EncoderSettings
 
@@ -32,8 +35,16 @@ final class PassiveMicCaptureEngine: CaptureEngine, @unchecked Sendable {
         label: "net.scosman.biscotti.mic.passive-engine", qos: .userInitiated
     )
     private var isTearingDown = false
-    private var engine: AVAudioEngine?
-    private var configObserver: NSObjectProtocol?
+    /// The device being read and its IO proc; `nil` while no capture runs.
+    private var running: (device: AudioObjectID, proc: AudioDeviceIOProcID)?
+    private var deviceListeners: [(address: AudioObjectPropertyAddress, block: AudioObjectPropertyListenerBlock)] = []
+    /// Counts engine builds and teardowns, so a retry scheduled for an older
+    /// state does nothing. Owned by engineQueue.
+    private var generation = 0
+
+    /// Delays between attempts to bring the input back after a failed rebuild.
+    /// After the last one the engine keeps trying at that pace until `stop()`.
+    static let retryDelays: [Double] = [0.3, 0.6, 1.2, 2.5, 5]
 
     /// The Core Audio UID of the microphone to record from, read at every engine
     /// build; `nil` or a disconnected device means the system default.
@@ -75,7 +86,6 @@ final class PassiveMicCaptureEngine: CaptureEngine, @unchecked Sendable {
                     do {
                         session = try MicCaptureSession(url: url, encoder: encoder, onFirstBuffer: callback)
                         try buildAndStartEngine()
-                        installConfigChangeObserver()
                         cont.resume()
                     } catch {
                         shutDown()
@@ -109,58 +119,121 @@ final class PassiveMicCaptureEngine: CaptureEngine, @unchecked Sendable {
                     cont.resume()
                     return
                 }
-                teardownEngine()
-                do {
-                    try buildAndStartEngine()
-                    cont.resume()
-                } catch {
-                    logger.error("Mic reconnect failed: \(error.localizedDescription, privacy: .public)")
-                    shutDown()
-                    cont.resume(throwing: CaptureError.micEngineFailed(error.localizedDescription))
+                // A default-input change that does not move this capture to
+                // another device needs no rebuild (each one costs half a second).
+                if let running, running.device == resolveInputDevice() {
+                    logger.notice("Passive mic reconnect: already on device \(running.device, privacy: .public), nothing to do")
+                } else {
+                    rebuildOrRetry(reason: "reconnect")
                 }
+                cont.resume()
+            }
+        }
+    }
+
+    /// Rebuilds the input. A failure never ends the recording: the file stays
+    /// open, the gap is filled with silence once audio returns, and the build
+    /// is tried again until it works or the recording stops.
+    private func rebuildOrRetry(reason: String, attempt: Int = 0) {
+        teardownEngine()
+        // Invalidates a retry that is still waiting from an earlier failure.
+        generation += 1
+        do {
+            try buildAndStartEngine()
+            if attempt > 0 {
+                logger.notice("Passive mic back after \(attempt, privacy: .public) retries (\(reason, privacy: .public))")
+            }
+        } catch {
+            teardownEngine()
+            let delay = Self.retryDelays[min(attempt, Self.retryDelays.count - 1)]
+            logger.error("Passive mic rebuild failed (\(reason, privacy: .public), attempt \(attempt + 1, privacy: .public)): \(error.localizedDescription, privacy: .public); retrying in \(delay, privacy: .public)s")
+            let expected = generation
+            engineQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
+                guard let self, !isTearingDown, capturingFlag.load(ordering: .acquiring),
+                      generation == expected, running == nil else { return }
+                rebuildOrRetry(reason: reason, attempt: attempt + 1)
             }
         }
     }
 
     deinit {
-        removeConfigChangeObserver()
         teardownEngine()
         closeSession()
     }
 
-    // MARK: - Engine lifecycle (engineQueue)
+    // MARK: - Capture lifecycle (engineQueue)
 
-    /// Builds an input-only engine on the chosen microphone and starts it.
+    /// Starts an IO proc on the chosen microphone.
     private func buildAndStartEngine() throws {
         guard capturingFlag.load(ordering: .acquiring) else { return }
         guard let session else {
             throw CaptureError.micEngineFailed("No microphone recording session is open.")
         }
-
-        let newEngine = AVAudioEngine()
-        engine = newEngine // store early so teardownEngine() works on failure
-        let input = newEngine.inputNode
-        let inputID = resolveInputDevice()
-        if let inputID, inputID != CoreAudioHelpers.defaultInputDeviceID() {
-            selectInputDevice(inputID, on: input)
+        guard let deviceID = resolveInputDevice() else {
+            throw CaptureError.micEngineFailed("No microphone is connected.")
         }
-
-        let format = input.inputFormat(forBus: 0)
-        guard format.sampleRate > 0, format.channelCount > 0 else {
+        guard let stream = CoreAudioHelpers.streamFormat(for: deviceID, scope: kAudioObjectPropertyScopeInput),
+              stream.mSampleRate > 0, stream.mChannelsPerFrame > 0,
+              stream.mFormatID == kAudioFormatLinearPCM,
+              stream.mFormatFlags & kAudioFormatFlagIsFloat != 0, stream.mBitsPerChannel == 32,
+              let format = AVAudioFormat(
+                  commonFormat: .pcmFormatFloat32, sampleRate: stream.mSampleRate, channels: 1, interleaved: false
+              ),
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: Self.maxFramesPerCycle)
+        else {
             throw CaptureError.micEngineFailed("The microphone has no usable audio format.")
         }
+
+        let handler = session.makeTapHandler()
+        var procID: AudioDeviceIOProcID?
+        let status = AudioDeviceCreateIOProcIDWithBlock(&procID, deviceID, nil) { _, input, inputTime, _, _ in
+            Self.deliver(input, at: inputTime.pointee.mHostTime, through: buffer, to: handler)
+        }
+        guard status == noErr, let procID else {
+            throw CaptureError.micEngineFailed("Could not attach to the microphone (OSStatus \(status)).")
+        }
+        let startStatus = AudioDeviceStart(deviceID, procID)
+        guard startStatus == noErr else {
+            AudioDeviceDestroyIOProcID(deviceID, procID)
+            throw CaptureError.micEngineFailed("Could not start the microphone (OSStatus \(startStatus)).")
+        }
+        running = (deviceID, procID)
+        generation += 1
+        installDeviceListeners(on: deviceID)
+        logSetup(deviceID: deviceID, stream: stream)
+    }
+
+    /// Largest IO cycle accepted; the HAL's are a few hundred to a few thousand frames.
+    private static let maxFramesPerCycle: AVAudioFrameCount = 16384
+
+    /// IO thread: copies channel 0 of the first input stream into `buffer` and
+    /// hands it to the session, which copies it on before returning.
+    private static func deliver(
+        _ input: UnsafePointer<AudioBufferList>, at hostTime: UInt64,
+        through buffer: AVAudioPCMBuffer, to handler: (AVAudioPCMBuffer, AVAudioTime) -> Void
+    ) {
+        let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
+        guard let first = buffers.first, let data = first.mData, first.mNumberChannels > 0,
+              let target = buffer.floatChannelData?[0]
+        else { return }
+        let channels = Int(first.mNumberChannels)
+        let frames = Int(first.mDataByteSize) / (MemoryLayout<Float>.size * channels)
+        guard frames > 0, frames <= Int(buffer.frameCapacity) else { return }
+        let source = data.assumingMemoryBound(to: Float.self)
+        for frame in 0 ..< frames {
+            target[frame] = source[frame * channels]
+        }
+        buffer.frameLength = AVAudioFrameCount(frames)
+        handler(buffer, AVAudioTime(hostTime: hostTime))
+    }
+
+    private func logSetup(deviceID: AudioObjectID, stream: AudioStreamBasicDescription) {
+        let name = CoreAudioHelpers.deviceName(for: deviceID) ?? "unknown"
+        let defaultInput = CoreAudioHelpers.defaultInputDeviceID() ?? 0
+        let defaultInputRate = CoreAudioHelpers.nominalSampleRate(for: defaultInput) ?? 0
         let outputID = CoreAudioHelpers.defaultOutputDeviceID() ?? 0
-        let outputBusy = CoreAudioHelpers.isRunningSomewhere(outputID)
         let outputRate = CoreAudioHelpers.nominalSampleRate(for: outputID) ?? 0
-
-        // Only the input node is tapped; the engine has no output node in its
-        // graph, so no output device is opened.
-        input.installTap(onBus: 0, bufferSize: 1024, format: nil, block: session.makeTapHandler())
-        newEngine.prepare()
-        try newEngine.start()
-
-        let name = inputID.flatMap { CoreAudioHelpers.deviceName(for: $0) } ?? "unknown"
-        logger.notice("Passive mic setup: input=\(name) id=\(inputID ?? 0, privacy: .public) rate=\(format.sampleRate, privacy: .public) channels=\(format.channelCount, privacy: .public); default output id=\(outputID, privacy: .public) rate=\(outputRate, privacy: .public) busy=\(outputBusy, privacy: .public) left untouched")
+        logger.notice("Passive mic setup: input=\(name) id=\(deviceID, privacy: .public) rate=\(stream.mSampleRate, privacy: .public) channels=\(stream.mChannelsPerFrame, privacy: .public); default input id=\(defaultInput, privacy: .public) rate=\(defaultInputRate, privacy: .public); default output id=\(outputID, privacy: .public) rate=\(outputRate, privacy: .public); neither touched")
     }
 
     /// The preferred microphone when it is connected, otherwise the system default.
@@ -174,34 +247,18 @@ final class PassiveMicCaptureEngine: CaptureEngine, @unchecked Sendable {
         return CoreAudioHelpers.defaultInputDeviceID()
     }
 
-    /// Points the input unit at `deviceID` before it starts, so a different
-    /// default input (for example Bluetooth headphones) is never opened.
-    private func selectInputDevice(_ deviceID: AudioObjectID, on input: AVAudioInputNode) {
-        guard let unit = input.audioUnit else {
-            logger.error("Mic input unit missing; recording from the system default instead of device \(deviceID, privacy: .public)")
-            return
-        }
-        var objectID = deviceID
-        let status = AudioUnitSetProperty(
-            unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
-            &objectID, UInt32(MemoryLayout<AudioObjectID>.size)
-        )
-        if status != noErr {
-            logger.error("Mic input could not be set to device \(deviceID, privacy: .public) (status \(status, privacy: .public)); recording from the system default")
-        }
-    }
-
     private func teardownEngine() {
         session?.invalidateTap()
-        guard let current = engine else { return }
-        current.inputNode.removeTap(onBus: 0)
-        if current.isRunning { current.stop() }
-        engine = nil
+        guard let current = running else { return }
+        removeDeviceListeners(from: current.device)
+        AudioDeviceStop(current.device, current.proc)
+        AudioDeviceDestroyIOProcID(current.device, current.proc)
+        running = nil
+        generation += 1
     }
 
-    /// Ends the capture for good: observer, engine, file and the capturing flag.
+    /// Ends the capture for good: device, file and the capturing flag.
     private func shutDown() {
-        removeConfigChangeObserver()
         teardownEngine()
         closeSession()
         capturingFlag.store(false, ordering: .releasing)
@@ -215,47 +272,38 @@ final class PassiveMicCaptureEngine: CaptureEngine, @unchecked Sendable {
         session = nil
     }
 
-    // MARK: - Config-change observer
+    // MARK: - Device changes
 
-    private func installConfigChangeObserver() {
-        configObserver = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange, object: nil, queue: nil
-        ) { [weak self] notification in
-            guard let source = notification.object as? AVAudioEngine else { return }
-            self?.handleConfigurationChange(engineID: ObjectIdentifier(source))
-        }
-    }
-
-    private func removeConfigChangeObserver() {
-        if let observer = configObserver {
-            NotificationCenter.default.removeObserver(observer)
-            configObserver = nil
-        }
-    }
-
-    /// The microphone changed format or went away: rebuild on the current choice.
-    /// A notification while the engine still runs and has not delivered audio is
-    /// the start-up settling of the device and is left alone.
-    private func handleConfigurationChange(engineID: ObjectIdentifier) {
-        engineQueue.async { [weak self] in
-            guard let self, !isTearingDown, capturingFlag.load(ordering: .acquiring),
-                  let engine, ObjectIdentifier(engine) == engineID else { return }
-            let delivered = session?.hasDeliveredBuffer ?? false
-            let running = engine.isRunning
-            logger.notice("Passive mic config change: running=\(running, privacy: .public), bufferDelivered=\(delivered, privacy: .public)")
-            if !delivered, running { return }
-
-            teardownEngine()
-            do {
-                try buildAndStartEngine()
-            } catch {
-                logger.error("Passive mic recovery failed: \(error.localizedDescription, privacy: .public)")
-                shutDown()
-                let handler = onUnrecoverableError
-                DispatchQueue.global().async { handler?(error) }
+    /// The microphone changing its format or disappearing rebuilds the capture
+    /// (on the default input when the chosen microphone is gone).
+    private func installDeviceListeners(on deviceID: AudioObjectID) {
+        let selectors = [
+            kAudioDevicePropertyNominalSampleRate, kAudioDevicePropertyStreamFormat, kAudioDevicePropertyDeviceIsAlive
+        ]
+        for selector in selectors {
+            var address = AudioObjectPropertyAddress(
+                mSelector: selector,
+                mScope: selector == kAudioDevicePropertyStreamFormat ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            let expected = generation
+            let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+                guard let self, !isTearingDown, capturingFlag.load(ordering: .acquiring),
+                      generation == expected else { return }
+                logger.notice("Passive mic device change (selector \(selector, privacy: .public)) on device \(deviceID, privacy: .public); rebuilding")
+                rebuildOrRetry(reason: "device change")
+            }
+            if AudioObjectAddPropertyListenerBlock(deviceID, &address, engineQueue, block) == noErr {
+                deviceListeners.append((address, block))
             }
         }
     }
 
-    var onUnrecoverableError: (@Sendable (Error) -> Void)?
+    private func removeDeviceListeners(from deviceID: AudioObjectID) {
+        for listener in deviceListeners {
+            var address = listener.address
+            AudioObjectRemovePropertyListenerBlock(deviceID, &address, engineQueue, listener.block)
+        }
+        deviceListeners.removeAll()
+    }
 }

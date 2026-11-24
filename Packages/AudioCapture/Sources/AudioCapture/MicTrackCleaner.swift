@@ -168,7 +168,8 @@ enum MicTrackCleaner {
 
     /// Pure part of `measureGain`: the gain for a set of frame levels and the peak.
     static func gain(levels: [Float], peak: Float) -> Float {
-        guard !levels.isEmpty, peak > 0 else { return 1 }
+        // Under a second of audio is a failed or aborted track, not a quiet one.
+        guard levels.count >= 20, peak > 0 else { return 1 }
         let loud = levels.sorted()[min(levels.count - 1, levels.count * 95 / 100)]
         guard loud >= silenceLevel else { return 1 }
         let gain = min(targetLevel / loud, maximumGain, 0.9 / peak)
