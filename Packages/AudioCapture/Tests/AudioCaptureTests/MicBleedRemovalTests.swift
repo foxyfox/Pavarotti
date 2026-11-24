@@ -246,10 +246,11 @@ struct MicTrackCleanerTests {
     @Test("gain is bounded and never lowers a track")
     func gainBounds() {
         #expect(MicTrackCleaner.gain(levels: [], peak: 0) == 1)
-        #expect(MicTrackCleaner.gain(levels: [0.0001, 0.0002], peak: 0.001) == 1) // silence
-        #expect(MicTrackCleaner.gain(levels: [0.2, 0.3], peak: 0.9) == 1) // loud already
-        #expect(MicTrackCleaner.gain(levels: [0.002, 0.002], peak: 0.004) == MicTrackCleaner.maximumGain)
-        #expect(abs(MicTrackCleaner.gain(levels: [0.02, 0.02], peak: 0.3) - 3) < 0.01) // peak-limited
+        #expect(MicTrackCleaner.gain(levels: [0.002, 0.002], peak: 0.004) == 1) // under a second
+        #expect(MicTrackCleaner.gain(levels: [Float](repeating: 0.0001, count: 40), peak: 0.001) == 1) // silence
+        #expect(MicTrackCleaner.gain(levels: [Float](repeating: 0.2, count: 40), peak: 0.9) == 1) // loud already
+        #expect(MicTrackCleaner.gain(levels: [Float](repeating: 0.002, count: 40), peak: 0.004) == MicTrackCleaner.maximumGain)
+        #expect(abs(MicTrackCleaner.gain(levels: [Float](repeating: 0.02, count: 40), peak: 0.3) - 3) < 0.01) // peak-limited
     }
 }
 
@@ -300,7 +301,10 @@ struct PassiveMicHardwareTests {
         let anchor = Mutex<Double>(0)
         engine.setOnFirstBuffer { value in anchor.withLock { $0 = value } }
         try await engine.start(writingTo: url)
-        try await Task.sleep(for: .seconds(8))
+        try await Task.sleep(for: .seconds(4))
+        // A route change rebuilds the input; it must come back on the same microphone.
+        try await engine.reconnect()
+        try await Task.sleep(for: .seconds(4))
         let busyDuring = CoreAudioHelpers.isRunningSomewhere(outputID)
         let stopped = Double(AudioConvertHostTimeToNanos(mach_absolute_time())) / 1e9
         await engine.stop()
