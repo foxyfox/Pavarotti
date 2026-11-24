@@ -540,3 +540,8 @@
 "Press the shortcut twice quickly to end a dictation, and the AI model turns what you said into a structured note with headings and lists before it is pasted. Uses the model under AI Enhancements." = "Drück das Kürzel zum Beenden zweimal schnell hintereinander, dann macht das KI-Modell aus dem Gesagten eine strukturierte Notiz mit Überschriften und Listen, bevor sie eingefügt wird. Nutzt das Modell unter KI-Funktionen.";
 "Not structured: %@ The text was pasted as spoken." = "Nicht strukturiert: %@ Der Text wurde so eingefügt, wie du ihn gesprochen hast.";
 "Download an AI model under AI Enhancements or set up an AI provider." = "Lade ein KI-Modell unter KI-Funktionen oder richte einen KI-Anbieter ein.";
+"Could not summarize" = "Zusammenfassen hat nicht geklappt";
+"Summarizing…" = "Fasst zusammen…";
+"Summary Copied" = "Zusammenfassung kopiert";
+"Summarize" = "Zusammenfassen";
+"Structure this dictation with the AI model and copy the result to the clipboard" = "Dieses Diktat mit dem KI-Modell strukturieren und das Ergebnis in die Zwischenablage kopieren";

@@ -66,6 +66,8 @@ struct BraindumpTests {
         #expect(structurer.inputs == ["Hallo Welt"])
         #expect(harness.inserter.inserted == ["## Ideen\n\n- Hallo Welt"])
         #expect(controller.lastTranscript == "## Ideen\n\n- Hallo Welt")
+        // Recent Dictations keeps what was said, not the note.
+        #expect(harness.history.entries.map(\.text) == ["Hallo Welt"])
         #expect(controller.phase == .idle)
 
         // The swallowed press did not leave the shortcut half-pressed: the next press starts.
@@ -139,6 +141,24 @@ struct BraindumpTests {
 
         #expect(structurer.inputs.isEmpty)
         #expect(harness.inserter.inserted == ["Hallo Welt"])
+    }
+
+    @Test("a dictation from the history is structured on request")
+    func structuresOnRequest() async throws {
+        let harness = DictationHarness()
+        defer { harness.tearDown() }
+        let controller = harness.controller
+        #expect(!controller.canStructure)
+        await #expect(throws: BraindumpError.noModel) {
+            try await controller.structuredText(for: "Hallo")
+        }
+
+        let structurer = FakeStructurer()
+        structurer.state.withLock { $0.answer = "```\n- Hallo\n```" }
+        controller.structurer = structurer
+        #expect(controller.canStructure)
+        #expect(try await controller.structuredText(for: "Hallo") == "- Hallo")
+        #expect(structurer.inputs == ["Hallo"])
     }
 
     @Test("a code fence around the answer is removed")

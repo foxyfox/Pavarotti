@@ -10,6 +10,12 @@ public struct RecentDictationsView: View {
     /// The dictation copied last, marked "Copied" for a moment.
     @State private var copiedID: DictationHistoryEntry.ID?
     @State private var confirmsClear = false
+    /// The dictation the AI model is summarizing right now.
+    @State private var summarizingID: DictationHistoryEntry.ID?
+    /// Why the last summary failed, for the alert.
+    @State private var summaryError: String?
+    /// The dictation whose summary was copied last, marked for a moment.
+    @State private var summarizedID: DictationHistoryEntry.ID?
 
     public init(controller: DictationController) {
         self.controller = controller
@@ -29,6 +35,13 @@ public struct RecentDictationsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Tokens.contentBackground.ignoresSafeArea())
+        .task(id: summarizedID) {
+            guard summarizedID != nil else { return }
+            try? await Task.sleep(for: .seconds(2))
+            if !Task.isCancelled {
+                summarizedID = nil
+            }
+        }
         .task(id: copiedID) {
             guard copiedID != nil else { return }
             do {
@@ -37,6 +50,14 @@ public struct RecentDictationsView: View {
                 return
             }
             copiedID = nil
+        }
+        .alert(
+            "Could not summarize",
+            isPresented: Binding(get: { summaryError != nil }, set: { if !$0 { summaryError = nil } })
+        ) {
+            Button("OK") { summaryError = nil }
+        } message: {
+            Text(verbatim: summaryError ?? "")
         }
     }
 
@@ -48,7 +69,9 @@ public struct RecentDictationsView: View {
                     DictationRow(
                         entry: entry,
                         isCopied: copiedID == entry.id,
+                        summary: summaryState(of: entry),
                         onCopy: { copy(entry) },
+                        onSummarize: { summarize(entry) },
                         onRemove: { controller.history.remove(entry.id) }
                     )
                 }
@@ -105,18 +128,55 @@ public struct RecentDictationsView: View {
     }
 
     private func copy(_ entry: DictationHistoryEntry) {
+        put(entry.text)
+        copiedID = entry.id
+    }
+
+    private func put(_ text: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.setString(entry.text, forType: .string)
-        copiedID = entry.id
+        pasteboard.setString(text, forType: .string)
+    }
+
+    private func summaryState(of entry: DictationHistoryEntry) -> DictationRow.SummaryState {
+        if !controller.canStructure { return .unavailable }
+        if summarizingID == entry.id { return .running }
+        return summarizedID == entry.id ? .copied : .ready
+    }
+
+    /// Structures the dictation with the AI model and copies the note to the clipboard.
+    private func summarize(_ entry: DictationHistoryEntry) {
+        guard summarizingID == nil else { return }
+        summarizingID = entry.id
+        Task {
+            defer { summarizingID = nil }
+            do {
+                let note = try await controller.structuredText(for: entry.text)
+                put(note)
+                summarizedID = entry.id
+            } catch {
+                summaryError = error.localizedDescription
+            }
+        }
     }
 }
 
 /// One dictation: when it was made, its whole text, and buttons to copy or remove it.
 private struct DictationRow: View {
+    /// What the Summarize button shows.
+    enum SummaryState {
+        /// No AI model is wired up: no button.
+        case unavailable
+        case ready
+        case running
+        case copied
+    }
+
     let entry: DictationHistoryEntry
     let isCopied: Bool
+    let summary: SummaryState
     let onCopy: () -> Void
+    let onSummarize: () -> Void
     let onRemove: () -> Void
 
     private var shape: RoundedRectangle {
@@ -133,6 +193,7 @@ private struct DictationRow: View {
                 Button(isCopied ? "Copied" : "Copy", systemImage: isCopied ? "checkmark" : "doc.on.doc", action: onCopy)
                     .buttonStyle(.borderless)
                     .help("Copy to the clipboard")
+                summarizeButton
                 Button("Remove", systemImage: "trash", action: onRemove)
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
@@ -145,6 +206,29 @@ private struct DictationRow: View {
         .padding(Tokens.spacingMD)
         .background(Tokens.cardFill, in: shape)
         .overlay(shape.strokeBorder(Tokens.cardStroke, lineWidth: 0.5))
+    }
+
+    @ViewBuilder
+    private var summarizeButton: some View {
+        switch summary {
+        case .unavailable:
+            EmptyView()
+        case .running:
+            HStack(spacing: Tokens.spacingXS) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Summarizing\u{2026}")
+            }
+            .foregroundStyle(Tokens.secondaryText)
+        case .ready, .copied:
+            Button(
+                summary == .copied ? "Summary Copied" : "Summarize",
+                systemImage: summary == .copied ? "checkmark" : "sparkles",
+                action: onSummarize
+            )
+            .buttonStyle(.borderless)
+            .help("Structure this dictation with the AI model and copy the result to the clipboard")
+        }
     }
 
     /// "Today, 14:32", "Yesterday, 09:10", or the weekday and date with the time.

@@ -121,3 +121,18 @@ extension DictationController {
         try? await Task.sleep(for: .seconds(remaining))
     }
 }
+
+public extension DictationController {
+    /// Whether an AI model can structure dictations, for the Summarize buttons.
+    var canStructure: Bool {
+        structurer != nil
+    }
+
+    /// `text` structured into a note, like a braindump, for Recent Dictations.
+    /// - Throws: ``BraindumpError/noModel`` without a structurer, or the model's error.
+    func structuredText(for text: String) async throws -> String {
+        guard let structurer else { throw BraindumpError.noModel }
+        let structured = try await Braindump.cleaned(structurer.structure(text))
+        return structured.isEmpty ? text : structured
+    }
+}
