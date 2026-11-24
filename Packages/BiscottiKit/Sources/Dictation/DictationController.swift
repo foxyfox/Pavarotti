@@ -248,11 +248,13 @@ public final class DictationController {
                 fail(DictationError.nothingHeard.localizedDescription)
                 return
             }
-            let text = await braindumpText(from: dependencies.dictionary.apply(to: heard), session: started)
+            let spoken = dependencies.dictionary.apply(to: heard)
+            let text = await braindumpText(from: spoken, session: started)
             guard started == session, !Task.isCancelled else { return }
             lastTranscript = text
-            // Kept before pasting, so text that does not arrive can be copied again.
-            dependencies.history.record(text)
+            // Kept before pasting, so text that does not arrive can be copied again. A
+            // braindump keeps what was said; Recent Dictations can structure it again.
+            dependencies.history.record(spoken)
             let result = await dependencies.inserter.insert(text, restoringClipboard: snapshot.restoresClipboard)
             finish(result, text: text, snapshot: snapshot, session: started)
         } catch {
